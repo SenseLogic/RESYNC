@@ -68,10 +68,10 @@ class FILE
     long
         ByteCount;
     bool
-        ItHasSampleHash,
+        ItHasPrefixHash,
         ItHasHash;
     HASH
-        SampleHash,
+        PrefixHash,
         Hash;
     string
         TargetFilePath,
@@ -126,17 +126,17 @@ class FILE
 
     // ~~
 
-    HASH GetSampleHash(
+    HASH GetPrefixHash(
         )
     {
-        if ( !ItHasSampleHash )
+        if ( !ItHasPrefixHash )
         {
-            SampleHash = GetHash( SampleByteCount );
+            PrefixHash = GetHash( PrefixByteCount );
 
-            ItHasSampleHash = true;
+            ItHasPrefixHash = true;
         }
 
-        return SampleHash;
+        return PrefixHash;
     }
 
     // ~~
@@ -162,9 +162,9 @@ class FILE
     {
         return
             ByteCount == other_file.ByteCount
-            && ( SampleByteCount <= 0
-                 || GetSampleHash() == other_file.GetSampleHash() )
-            && ( ByteCount <= SampleByteCount
+            && ( PrefixByteCount <= 0
+                 || GetPrefixHash() == other_file.GetPrefixHash() )
+            && ( ByteCount <= PrefixByteCount
                  || GetHash() == other_file.GetHash() );
     }
     
@@ -422,7 +422,7 @@ bool
     RemovedOptionIsEnabled,
     UpdatedOptionIsEnabled;
 long
-    SampleByteCount;
+    PrefixByteCount;
 string
     SourceFolderPath,
     TargetFolderPath;
@@ -908,7 +908,7 @@ void main(
     PrintOptionIsEnabled = false;
     ConfirmOptionIsEnabled = false;
     PreviewOptionIsEnabled = false;
-    SampleByteCount = 128 * 1024;
+    PrefixByteCount = 128 * 1024;
     MinimumModificationTimeOffset = msecs( -1 );
     MaximumModificationTimeOffset = msecs( 1 );
 
@@ -989,14 +989,14 @@ void main(
 
             argument_array = argument_array[ 1 .. $ ];
         }
-        else if ( option == "--sample"
+        else if ( option == "--prefix"
                   && argument_array.length >= 1 )
         {
-            SampleByteCount = argument_array[ 0 ].to!long() * 1024;
+            PrefixByteCount = argument_array[ 0 ].to!long() * 1024;
 
-            if ( SampleByteCount < 0 )
+            if ( PrefixByteCount < 0 )
             {
-                SampleByteCount = 0;
+                PrefixByteCount = 0;
             }
 
             argument_array = argument_array[ 1 .. $ ];
@@ -1028,7 +1028,7 @@ void main(
         writeln( "    --confirm" );
         writeln( "    --preview" );
         writeln( "    --precision 1" );
-        writeln( "    --sample 128" );
+        writeln( "    --prefix 128" );
         writeln( "Examples :" );
         writeln( "    resync --changed --removed --added --exclude .git/ --print --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --changed --removed --added --preview SOURCE_FOLDER/ TARGET_FOLDER/" );
