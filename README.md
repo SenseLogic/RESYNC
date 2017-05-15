@@ -4,7 +4,7 @@ Versatile local folder synchronizer.
 
 ## Features
 
-* Detect and processes the updated, changed, moved, removed and added files independently.
+* Processes the updated, changed, moved, removed and added files independently.
 
 ## Limitations
 
