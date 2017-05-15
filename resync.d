@@ -23,11 +23,11 @@
 // -- IMPORTS
 
 import core.stdc.stdlib : exit;
-import core.time;
+import core.time : msecs, Duration;
 import std.conv : to;
 import std.datetime : SysTime;
 import std.digest.md : MD5;
-import std.file : copy, dirEntries, exists, getTimes, mkdirRecurse, readText, remove, rename, setTimes, write, SpanMode;
+import std.file : copy, dirEntries, exists, getAttributes, getTimes, mkdir, mkdirRecurse, readText, remove, rename, setAttributes, setTimes, write, SpanMode;
 import std.path : baseName, dirName, globMatch;
 import std.stdio : readln, writeln, File;
 import std.string : endsWith, indexOf, replace, startsWith, toLower;
@@ -360,7 +360,7 @@ class FOLDER
                         {
                             file = new FILE;
                             file.Path = folder_entry;
-                            file.RelativePath = file.Path[ Path.length .. $ ];
+                            file.RelativePath = GetRelativePath( file.Path );
                             file.RelativeFolderPath = GetFolderPath( file.RelativePath );
                             file.Name = file_name;
                             file.ModificationTime = folder_entry.timeLastModified;
@@ -489,10 +489,17 @@ void CreateFolder(
     string folder_path
     )
 {
+    string
+        super_folder_path;
+
     try
     {
-        if ( !folder_path.exists() )
+        if ( folder_path != ""
+             && folder_path != "/"
+             && !folder_path.exists() )
         {
+            writeln( "Creating folder : ", folder_path );
+
             folder_path.mkdirRecurse();
         }
     }
@@ -552,14 +559,25 @@ void CopyFile(
 {
     try
     {
+        uint
+            attributes;
         SysTime
             access_time,
             modification_time;
 
         GetFolderPath( target_file_path ).CreateFolder();
 
+        attributes = source_file_path.getAttributes();
         source_file_path.getTimes( access_time, modification_time );
+
+        if ( target_file_path.exists() )
+        {
+            target_file_path.setAttributes( 511 );
+        }
+
         source_file_path.copy( target_file_path );
+
+        target_file_path.setAttributes( attributes );
         target_file_path.setTimes( access_time, modification_time );
     }
     catch ( Error error )
