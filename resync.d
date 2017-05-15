@@ -498,8 +498,6 @@ void CreateFolder(
              && folder_path != "/"
              && !folder_path.exists() )
         {
-            writeln( "Creating folder : ", folder_path );
-
             folder_path.mkdirRecurse();
         }
     }
