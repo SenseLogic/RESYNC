@@ -42,7 +42,7 @@ resync [options] SOURCE_FOLDER/ TARGET_FOLDER/
 --confirm : ask confirmation before applying the changes
 --preview : preview the changes without applying them
 --precision 1 : modification time precision in milliseconds
---sample 128 : file sample size in kilobytes
+--sample 128 : moved file content sample size in kilobytes
 ``` 
 
 ### Examples
