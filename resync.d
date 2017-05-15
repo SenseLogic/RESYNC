@@ -955,31 +955,17 @@ void main(
 
             argument_array = argument_array[ 1 .. $ ];
         }
-        else if ( option == "--include"
-                  && argument_array.length >= 1 )
-        {
-            IncludedFolderPathArray ~= argument_array[ 0 ];
-
-            argument_array = argument_array[ 1 .. $ ];
-        }
         else if ( option == "--exclude"
-                  && argument_array.length >= 1 )
+             && argument_array.length >= 1 )
         {
-            ExcludedFolderPathArray ~= argument_array[ 0 ];
-
-            argument_array = argument_array[ 1 .. $ ];
-        }
-        else if ( option == "--filter"
-                  && argument_array.length >= 1 )
-        {
-            IncludedFileNameFilterArray ~= argument_array[ 0 ];
-
-            argument_array = argument_array[ 1 .. $ ];
-        }
-        else if ( option == "--ignore"
-                  && argument_array.length >= 1 )
-        {
-            ExcludedFileNameFilterArray ~= argument_array[ 0 ];
+            if ( argument_array[ 0 ].endsWith( '/' ) )
+            {
+                ExcludedFolderPathArray ~= argument_array[ 0 ];
+            }
+            else
+            {
+                ExcludedFileNameFilterArray ~= argument_array[ 0 ];
+            }
 
             argument_array = argument_array[ 1 .. $ ];
         }
@@ -1038,8 +1024,8 @@ void main(
         writeln( "    --added" );
         writeln( "    --include SUBFOLDER/" );
         writeln( "    --exclude SUBFOLDER/" );
-        writeln( "    --filter *.ext" );
-        writeln( "    --ignore *.ext" );
+        writeln( "    --include *.ext" );
+        writeln( "    --exclude *.ext" );
         writeln( "    --print" );
         writeln( "    --confirm" );
         writeln( "    --preview" );

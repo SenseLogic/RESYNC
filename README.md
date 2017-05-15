@@ -29,26 +29,29 @@ resync [options] SOURCE_FOLDER/ TARGET_FOLDER/
 ### Options
 
 ```bash
---filter * : file name filter
---precision 1 : modification time precision in milliseconds
---sample 128 : file sample size in kilobytes
---print : print the changes
---confirm : ask confirmation before applying the changes
---preview : preview the changes
 --updated : detect the updated files
 --changed : detect the changed files
 --moved : detect the moved files
 --removed : detect the removed files
 --added : detect the added files
+--include SUBFOLDER/ : include this subfolder
+--exclude SUBFOLDER/ : exclude this subfolder
+--include *.ext : include these file names
+--exclude *.ext : exclude these file names
+--print : print the changes
+--confirm : ask confirmation before applying the changes
+--preview : preview the changes
+--precision 1 : modification time precision in milliseconds
+--sample 128 : file sample size in kilobytes
 ``` 
 
 ### Examples
 
 ```bash
-resync --changed --removed --added --print --confirm --exclude .git/* SOURCE_FOLDER/ TARGET_FOLDER/
+resync --changed --removed --added --print --confirm --exclude .git/ SOURCE_FOLDER/ TARGET_FOLDER/
 ```
 
-Detect the changed, removed and added files, excluding the ".git/" folder and its subfolders, print these changes, and ask confirmation before applying them.
+Detect the changed, removed and added files, excluding the ".git/" folder, print these changes, and ask confirmation before applying them.
 
 ```bash
 resync --changed --removed --added --preview SOURCE_FOLDER/ TARGET_FOLDER/
