@@ -1,6 +1,6 @@
 # Resync
 
-Versatile folder synchronizer.
+Versatile local folder synchronizer.
 
 ## Features
 
@@ -8,7 +8,6 @@ Versatile folder synchronizer.
 
 ## Limitations
 
-* Only processes local folders.
 * Doesn't add or remove empty directories.
 
 ## Installation
