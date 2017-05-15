@@ -40,7 +40,7 @@ resync [options] SOURCE_FOLDER/ TARGET_FOLDER/
 --exclude *.ext : exclude these file names
 --print : print the changes
 --confirm : ask confirmation before applying the changes
---preview : preview the changes
+--preview : preview the changes without applying them
 --precision 1 : modification time precision in milliseconds
 --sample 128 : file sample size in kilobytes
 ``` 
@@ -48,7 +48,7 @@ resync [options] SOURCE_FOLDER/ TARGET_FOLDER/
 ### Examples
 
 ```bash
-resync --changed --removed --added --print --confirm --exclude .git/ SOURCE_FOLDER/ TARGET_FOLDER/
+resync --changed --removed --added --exclude .git/ --print --confirm SOURCE_FOLDER/ TARGET_FOLDER/
 ```
 
 Detect the changed, removed and added files, excluding the ".git/" folder, print these changes, and ask confirmation before applying them.
@@ -57,7 +57,7 @@ Detect the changed, removed and added files, excluding the ".git/" folder, print
 resync --changed --removed --added --preview SOURCE_FOLDER/ TARGET_FOLDER/
 ```
 
-Detect the changed, removed and added files, and preview these changes.
+Detect the changed, removed and added files, and preview these changes without applying them.
 
 ```bash
 resync --changed --removed --added SOURCE_FOLDER/ TARGET_FOLDER/
