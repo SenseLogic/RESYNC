@@ -8,7 +8,7 @@ Versatile local folder synchronizer.
 
 ## Limitations
 
-* Doesn't add or remove empty directories.
+* Empty directories and symbolic links are not processed.
 
 ## Installation
 
