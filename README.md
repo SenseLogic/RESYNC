@@ -1,6 +1,6 @@
 # Resync
 
-Local folder synchronizer.
+Versatile folder synchronizer.
 
 ## Features
 
@@ -8,9 +8,8 @@ Local folder synchronizer.
 
 ## Limitations
 
-* Not yet implemented :
-  * Add or remove empty directories.
-  * Manage all file system errors.
+* Only processes local folders.
+* Doesn't add or remove empty directories.
 
 ## Installation
 
