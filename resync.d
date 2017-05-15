@@ -300,28 +300,28 @@ class FOLDER
             
         file_is_included = true;
         
-        if ( IncludedFileNameFilterArray.length > 0
-             || ExcludedFileNameFilterArray.length > 0 )
+        if ( IncludedFileNameArray.length > 0
+             || ExcludedFileNameArray.length > 0 )
         {
-            if ( IncludedFileNameFilterArray.length > 0 )
+            if ( IncludedFileNameArray.length > 0 )
             {
                 file_is_included = false;
                 
-                foreach ( included_file_name_filter; IncludedFileNameFilterArray )
+                foreach ( included_file_name; IncludedFileNameArray )
                 {
-                    if ( file_name.globMatch( included_file_name_filter ) )
+                    if ( file_name.globMatch( included_file_name ) )
                     {
                         file_is_included = true;
                     }
                 }
             }
             
-            if ( ExcludedFileNameFilterArray.length > 0
+            if ( ExcludedFileNameArray.length > 0
                  && file_is_included )
             {
-                foreach ( excluded_file_name_filter; ExcludedFileNameFilterArray )
+                foreach ( excluded_file_name; ExcludedFileNameArray )
                 {
-                    if ( file_name.globMatch( excluded_file_name_filter ) )
+                    if ( file_name.globMatch( excluded_file_name ) )
                     {
                         file_is_included = false;
 
@@ -429,8 +429,8 @@ string
 string[]
     IncludedFolderPathArray,
     ExcludedFolderPathArray,
-    IncludedFileNameFilterArray,
-    ExcludedFileNameFilterArray;
+    IncludedFileNameArray,
+    ExcludedFileNameArray;
 Duration
     MinimumModificationTimeOffset,
     MaximumModificationTimeOffset;
@@ -903,8 +903,8 @@ void main(
     AddedOptionIsEnabled = false;
     IncludedFolderPathArray = [];
     ExcludedFolderPathArray = [];
-    IncludedFileNameFilterArray = [];
-    ExcludedFileNameFilterArray = [];
+    IncludedFileNameArray = [];
+    ExcludedFileNameArray = [];
     PrintOptionIsEnabled = false;
     ConfirmOptionIsEnabled = false;
     PreviewOptionIsEnabled = false;
@@ -948,7 +948,7 @@ void main(
             }
             else
             {
-                IncludedFileNameFilterArray ~= argument_array[ 0 ];
+                IncludedFileNameArray ~= argument_array[ 0 ];
             }
 
             argument_array = argument_array[ 1 .. $ ];
@@ -962,7 +962,7 @@ void main(
             }
             else
             {
-                ExcludedFileNameFilterArray ~= argument_array[ 0 ];
+                ExcludedFileNameArray ~= argument_array[ 0 ];
             }
 
             argument_array = argument_array[ 1 .. $ ];
