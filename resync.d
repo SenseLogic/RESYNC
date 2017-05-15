@@ -28,7 +28,7 @@ import std.conv : to;
 import std.datetime : SysTime;
 import std.digest.md : MD5;
 import std.file : copy, dirEntries, exists, getTimes, mkdirRecurse, readText, remove, rename, setTimes, write, SpanMode;
-import std.path : baseName, dirName;
+import std.path : baseName, dirName, globMatch;
 import std.stdio : readln, writeln, File;
 import std.string : endsWith, indexOf, replace, startsWith, toLower;
 
@@ -237,46 +237,165 @@ class FOLDER
 
     // ~~
 
+    string GetRelativePath(
+        string path
+        )
+    {
+        return path[ Path.length .. $ ];
+    }
+    
+    // ~~
+    
+    bool IsIncludedFolder(
+        string folder_path
+        )
+    {
+        bool
+            folder_is_included;
+            
+        folder_is_included = true;
+        
+        if ( IncludedFolderPathArray.length > 0
+             || ExcludedFolderPathArray.length > 0 )
+        {
+            if ( IncludedFolderPathArray.length > 0 )
+            {
+                folder_is_included = false;
+                
+                foreach ( included_folder_path; IncludedFolderPathArray )
+                {
+                    if ( folder_path.startsWith( included_folder_path ) )
+                    {
+                        folder_is_included = true;
+                    }
+                }
+            }
+            
+            if ( ExcludedFolderPathArray.length > 0
+                 && folder_is_included )
+            {
+                foreach ( excluded_folder_path; ExcludedFolderPathArray )
+                {
+                    if ( folder_path.startsWith( excluded_folder_path ) )
+                    {
+                        folder_is_included = false;
+
+                        break;
+                    }
+                }
+            }
+        }
+
+        return folder_is_included;
+    }
+    
+    // ~~
+    
+    bool IsIncludedFile(
+        string file_name
+        )
+    {
+        bool
+            file_is_included;
+            
+        file_is_included = true;
+        
+        if ( IncludedFileNameFilterArray.length > 0
+             || ExcludedFileNameFilterArray.length > 0 )
+        {
+            if ( IncludedFileNameFilterArray.length > 0 )
+            {
+                file_is_included = false;
+                
+                foreach ( included_file_name_filter; IncludedFileNameFilterArray )
+                {
+                    if ( file_name.globMatch( included_file_name_filter ) )
+                    {
+                        file_is_included = true;
+                    }
+                }
+            }
+            
+            if ( ExcludedFileNameFilterArray.length > 0
+                 && file_is_included )
+            {
+                foreach ( excluded_file_name_filter; ExcludedFileNameFilterArray )
+                {
+                    if ( file_name.globMatch( excluded_file_name_filter ) )
+                    {
+                        file_is_included = false;
+
+                        break;
+                    }
+                }
+            }
+        }
+
+        return file_is_included;
+    }
+
+    // ~~
+
     void Read(
         string folder_path
         )
     {
+        string
+            file_name;
         FILE
             file;
 
-        try
+        if ( IsIncludedFolder( GetRelativePath( folder_path ) ) )
         {
-            foreach ( folder_entry; dirEntries( folder_path, FileNameFilter, SpanMode.shallow ) )
+            try
             {
-                if ( folder_entry.isFile()
-                     && !folder_entry.isSymlink() )
+                foreach ( folder_entry; dirEntries( folder_path, SpanMode.shallow ) )
                 {
-                    file = new FILE;
-                    file.Path = folder_entry;
-                    file.RelativePath = file.Path[ Path.length .. $ ];
-                    file.RelativeFolderPath = GetFolderPath( file.RelativePath );
-                    file.Name = file.Path.baseName();
-                    file.ModificationTime = folder_entry.timeLastModified;
-                    file.ByteCount = folder_entry.size();
+                    if ( folder_entry.isFile()
+                         && !folder_entry.isSymlink() )
+                    {
+                        file_name = folder_entry.baseName();
+                        
+                        if ( IsIncludedFile( file_name ) )
+                        {
+                            file = new FILE;
+                            file.Path = folder_entry;
+                            file.RelativePath = file.Path[ Path.length .. $ ];
+                            file.RelativeFolderPath = GetFolderPath( file.RelativePath );
+                            file.Name = file_name;
+                            file.ModificationTime = folder_entry.timeLastModified;
+                            file.ByteCount = folder_entry.size();
 
-                    FileArray ~= file;
-                    FileMap[ file.RelativePath ] = file;
+                            FileArray ~= file;
+                            FileMap[ file.RelativePath ] = file;
+                        }
+                    }
+                }
+
+                foreach ( folder_entry; dirEntries( folder_path, SpanMode.shallow ) )
+                {
+                    if ( folder_entry.isDir()
+                         && !folder_entry.isSymlink() )
+                    {
+                        Read( folder_entry ~ '/' );
+                    }
                 }
             }
-
-            foreach ( folder_entry; dirEntries( folder_path, "*", SpanMode.shallow ) )
+            catch ( Error error )
             {
-                if ( folder_entry.isDir()
-                     && !folder_entry.isSymlink() )
-                {
-                    Read( folder_entry );
-                }
+                Abort( "Can't read folder : " ~ folder_path );
             }
         }
-        catch ( Error error )
-        {
-            Abort( "Can't read folder : " ~ folder_path );
-        }
+    }
+    
+    // ~~
+    
+    void Read(
+        )
+    {
+        writeln( "Reading folder : ", Path );
+
+        Read( Path );
     }
 
     // ~~
@@ -305,9 +424,13 @@ bool
 long
     SampleByteCount;
 string
-    FileNameFilter,
     SourceFolderPath,
     TargetFolderPath;
+string[]
+    IncludedFolderPathArray,
+    ExcludedFolderPathArray,
+    IncludedFileNameFilterArray,
+    ExcludedFileNameFilterArray;
 Duration
     MinimumModificationTimeOffset,
     MaximumModificationTimeOffset;
@@ -706,8 +829,8 @@ void SynchronizeFolders(
     SourceFolder.Path = SourceFolderPath;
     TargetFolder.Path = TargetFolderPath;
 
-    SourceFolder.Read( SourceFolderPath );
-    TargetFolder.Read( TargetFolderPath );
+    SourceFolder.Read();
+    TargetFolder.Read();
 
     UpdatedFileArray = [];
     ChangedFileArray = [];
@@ -757,18 +880,21 @@ void main(
 
     argument_array = argument_array[ 1 .. $ ];
 
-    FileNameFilter = "*";
-    SampleByteCount = 128 * 1024;
-    MinimumModificationTimeOffset = msecs( -1 );
-    MaximumModificationTimeOffset = msecs( 1 );
-    PrintOptionIsEnabled = false;
-    ConfirmOptionIsEnabled = false;
-    PreviewOptionIsEnabled = false;
     UpdatedOptionIsEnabled = false;
     ChangedOptionIsEnabled = false;
     MovedOptionIsEnabled = false;
     RemovedOptionIsEnabled = false;
     AddedOptionIsEnabled = false;
+    IncludedFolderPathArray = [];
+    ExcludedFolderPathArray = [];
+    IncludedFileNameFilterArray = [];
+    ExcludedFileNameFilterArray = [];
+    PrintOptionIsEnabled = false;
+    ConfirmOptionIsEnabled = false;
+    PreviewOptionIsEnabled = false;
+    SampleByteCount = 128 * 1024;
+    MinimumModificationTimeOffset = msecs( -1 );
+    MaximumModificationTimeOffset = msecs( 1 );
 
     while ( argument_array.length >= 1
             && argument_array[ 0 ].startsWith( "--" ) )
@@ -777,48 +903,7 @@ void main(
 
         argument_array = argument_array[ 1 .. $ ];
         
-        if ( option == "--filter"
-             && argument_array.length >= 1 )
-        {
-            FileNameFilter = argument_array[ 0 ];
-
-            argument_array = argument_array[ 1 .. $ ];
-        }
-        else if ( option == "--precision"
-             && argument_array.length >= 1 )
-        {
-            millisecond_count = argument_array[ 0 ].to!long();
-
-            MinimumModificationTimeOffset = msecs( -millisecond_count );
-            MaximumModificationTimeOffset = msecs( millisecond_count );
-
-            argument_array = argument_array[ 1 .. $ ];
-        }
-        else if ( option == "--sample"
-             && argument_array.length >= 1 )
-        {
-            SampleByteCount = argument_array[ 0 ].to!long() * 1024;
-
-            if ( SampleByteCount < 0 )
-            {
-                SampleByteCount = 0;
-            }
-
-            argument_array = argument_array[ 1 .. $ ];
-        }
-        else if ( option == "--print" )
-        {
-            PrintOptionIsEnabled = true;
-        }
-        else if ( option == "--confirm" )
-        {
-            ConfirmOptionIsEnabled = true;
-        }
-        else if ( option == "--preview" )
-        {
-            PreviewOptionIsEnabled = true;
-        }
-        else if ( option == "--updated" )
+        if ( option == "--updated" )
         {
             UpdatedOptionIsEnabled = true;
         }
@@ -838,6 +923,82 @@ void main(
         {
             AddedOptionIsEnabled = true;
         }
+        else if ( option == "--include"
+             && argument_array.length >= 1 )
+        {
+            if ( argument_array[ 0 ].endsWith( '/' ) )
+            {
+                IncludedFolderPathArray ~= argument_array[ 0 ];
+            }
+            else
+            {
+                IncludedFileNameFilterArray ~= argument_array[ 0 ];
+            }
+
+            argument_array = argument_array[ 1 .. $ ];
+        }
+        else if ( option == "--include"
+                  && argument_array.length >= 1 )
+        {
+            IncludedFolderPathArray ~= argument_array[ 0 ];
+
+            argument_array = argument_array[ 1 .. $ ];
+        }
+        else if ( option == "--exclude"
+                  && argument_array.length >= 1 )
+        {
+            ExcludedFolderPathArray ~= argument_array[ 0 ];
+
+            argument_array = argument_array[ 1 .. $ ];
+        }
+        else if ( option == "--filter"
+                  && argument_array.length >= 1 )
+        {
+            IncludedFileNameFilterArray ~= argument_array[ 0 ];
+
+            argument_array = argument_array[ 1 .. $ ];
+        }
+        else if ( option == "--ignore"
+                  && argument_array.length >= 1 )
+        {
+            ExcludedFileNameFilterArray ~= argument_array[ 0 ];
+
+            argument_array = argument_array[ 1 .. $ ];
+        }
+        else if ( option == "--print" )
+        {
+            PrintOptionIsEnabled = true;
+        }
+        else if ( option == "--confirm" )
+        {
+            ConfirmOptionIsEnabled = true;
+        }
+        else if ( option == "--preview" )
+        {
+            PreviewOptionIsEnabled = true;
+        }
+        else if ( option == "--precision"
+                  && argument_array.length >= 1 )
+        {
+            millisecond_count = argument_array[ 0 ].to!long();
+
+            MinimumModificationTimeOffset = msecs( -millisecond_count );
+            MaximumModificationTimeOffset = msecs( millisecond_count );
+
+            argument_array = argument_array[ 1 .. $ ];
+        }
+        else if ( option == "--sample"
+                  && argument_array.length >= 1 )
+        {
+            SampleByteCount = argument_array[ 0 ].to!long() * 1024;
+
+            if ( SampleByteCount < 0 )
+            {
+                SampleByteCount = 0;
+            }
+
+            argument_array = argument_array[ 1 .. $ ];
+        }
     }
     
     if ( argument_array.length == 2 )
@@ -852,24 +1013,27 @@ void main(
         writeln( "Usage :" );
         writeln( "    resync [options] SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "Options :" );
-        writeln( "    --filter *" );
-        writeln( "    --precision 1" );
-        writeln( "    --sample 128" );
-        writeln( "    --print" );
-        writeln( "    --confirm" );
-        writeln( "    --preview" );
         writeln( "    --updated" );
         writeln( "    --changed" );
         writeln( "    --moved" );
         writeln( "    --removed" );
         writeln( "    --added" );
+        writeln( "    --include SUBFOLDER/" );
+        writeln( "    --exclude SUBFOLDER/" );
+        writeln( "    --filter *.ext" );
+        writeln( "    --ignore *.ext" );
+        writeln( "    --print" );
+        writeln( "    --confirm" );
+        writeln( "    --preview" );
+        writeln( "    --precision 1" );
+        writeln( "    --sample 128" );
         writeln( "Examples :" );
-        writeln( "    resync --changed --removed --added --print --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --changed --removed --added --exclude .git/ --print --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --changed --removed --added --preview SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --updated SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --moved SOURCE_FOLDER/ TARGET_FOLDER/" );
 
-        Abort( "Invalid arguments" );
+        Abort( "Invalid arguments : " ~ argument_array.to!string() );
     }
 }
 
