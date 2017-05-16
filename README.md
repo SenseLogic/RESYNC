@@ -1,10 +1,12 @@
 # Resync
 
-Versatile local folder synchronizer.
+Fast folder resynchronizer.
 
 ## Features
 
+* Efficiently resynchronize big file trees on local disks without computing checksums.
 * Processes the updated, changed, moved, removed and added files independently.
+* Allows to include/exclude files by name, path or folder, using wildcards.
 
 ## Limitations
 
