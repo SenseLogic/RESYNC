@@ -59,10 +59,10 @@ class FILE
     FILE_TYPE
         Type;
     string
+        Name,
         Path,
         RelativePath,
-        RelativeFolderPath,
-        Name;
+        RelativeFolderPath;
     SysTime
         ModificationTime;
     long
@@ -75,7 +75,7 @@ class FILE
         Hash;
     string
         TargetFilePath,
-        TargetFileRelativePath;
+        TargetRelativeFilePath;
 
     // ~~
 
@@ -219,7 +219,7 @@ class FILE
             " ",
             TargetFilePath,
             " ",
-            TargetFileRelativePath 
+            TargetRelativeFilePath 
             );
     }
 }
@@ -245,107 +245,21 @@ class FOLDER
     }
     
     // ~~
-    
-    bool IsIncludedFolder(
-        string folder_path
-        )
-    {
-        bool
-            folder_is_included;
-            
-        folder_is_included = true;
-        
-        if ( IncludedFolderPathArray.length > 0
-             || ExcludedFolderPathArray.length > 0 )
-        {
-            if ( IncludedFolderPathArray.length > 0 )
-            {
-                folder_is_included = false;
-                
-                foreach ( included_folder_path; IncludedFolderPathArray )
-                {
-                    if ( folder_path.startsWith( included_folder_path ) )
-                    {
-                        folder_is_included = true;
-                    }
-                }
-            }
-            
-            if ( ExcludedFolderPathArray.length > 0
-                 && folder_is_included )
-            {
-                foreach ( excluded_folder_path; ExcludedFolderPathArray )
-                {
-                    if ( folder_path.startsWith( excluded_folder_path ) )
-                    {
-                        folder_is_included = false;
-
-                        break;
-                    }
-                }
-            }
-        }
-
-        return folder_is_included;
-    }
-    
-    // ~~
-    
-    bool IsIncludedFile(
-        string file_name
-        )
-    {
-        bool
-            file_is_included;
-            
-        file_is_included = true;
-        
-        if ( IncludedFileNameArray.length > 0
-             || ExcludedFileNameArray.length > 0 )
-        {
-            if ( IncludedFileNameArray.length > 0 )
-            {
-                file_is_included = false;
-                
-                foreach ( included_file_name; IncludedFileNameArray )
-                {
-                    if ( file_name.globMatch( included_file_name ) )
-                    {
-                        file_is_included = true;
-                    }
-                }
-            }
-            
-            if ( ExcludedFileNameArray.length > 0
-                 && file_is_included )
-            {
-                foreach ( excluded_file_name; ExcludedFileNameArray )
-                {
-                    if ( file_name.globMatch( excluded_file_name ) )
-                    {
-                        file_is_included = false;
-
-                        break;
-                    }
-                }
-            }
-        }
-
-        return file_is_included;
-    }
-
-    // ~~
 
     void Read(
         string folder_path
         )
     {
         string
-            file_name;
+            file_name,
+            relative_file_path,
+            relative_folder_path;
         FILE
             file;
+            
+        relative_folder_path = GetRelativePath( folder_path );
 
-        if ( IsIncludedFolder( GetRelativePath( folder_path ) ) )
+        if ( IsIncludedPath( relative_folder_path,IncludedFolderPathArray, ExcludedFolderPathArray ) )
         {
             try
             {
@@ -355,14 +269,16 @@ class FOLDER
                          && !folder_entry.isSymlink() )
                     {
                         file_name = folder_entry.baseName();
+                        relative_file_path = GetRelativePath( folder_entry );
                         
-                        if ( IsIncludedFile( file_name ) )
+                        if ( IsIncludedPath( relative_file_path, IncludedFilePathArray, ExcludedFilePathArray )
+                             && IsIncludedPath( file_name, IncludedFileNameArray, ExcludedFileNameArray ) )
                         {
                             file = new FILE;
-                            file.Path = folder_entry;
-                            file.RelativePath = GetRelativePath( file.Path );
-                            file.RelativeFolderPath = GetFolderPath( file.RelativePath );
                             file.Name = file_name;
+                            file.Path = folder_entry;
+                            file.RelativePath = relative_file_path;
+                            file.RelativeFolderPath = GetFolderPath( file.RelativePath );
                             file.ModificationTime = folder_entry.timeLastModified;
                             file.ByteCount = folder_entry.size();
 
@@ -429,6 +345,8 @@ string
 string[]
     IncludedFolderPathArray,
     ExcludedFolderPathArray,
+    IncludedFilePathArray,
+    ExcludedFilePathArray,
     IncludedFileNameArray,
     ExcludedFileNameArray;
 Duration
@@ -481,6 +399,53 @@ string GetFolderPath(
     }
     
     return folder_path;
+}
+
+// ~~
+
+bool IsIncludedPath(
+    string path,
+    string[] included_path_array,
+    string[] excluded_path_array
+    )
+{
+    bool
+        path_is_included;
+        
+    path_is_included = true;
+    
+    if ( included_path_array.length > 0
+         || excluded_path_array.length > 0 )
+    {
+        if ( included_path_array.length > 0 )
+        {
+            path_is_included = false;
+            
+            foreach ( included_path; included_path_array )
+            {
+                if ( path.globMatch( included_path ) )
+                {
+                    path_is_included = true;
+                }
+            }
+        }
+        
+        if ( excluded_path_array.length > 0
+             && path_is_included )
+        {
+            foreach ( excluded_path; excluded_path_array )
+            {
+                if ( path.globMatch( excluded_path ) )
+                {
+                    path_is_included = false;
+
+                    break;
+                }
+            }
+        }
+    }
+
+    return path_is_included;
 }
 
 // ~~
@@ -604,7 +569,7 @@ void FindUpdatedFiles(
             if ( source_file !is null )
             {
                 source_file.TargetFilePath = target_file.Path;
-                source_file.TargetFileRelativePath = target_file.RelativePath;
+                source_file.TargetRelativeFilePath = target_file.RelativePath;
 
                 modification_time_offset = source_file.ModificationTime - target_file.ModificationTime;
 
@@ -654,7 +619,7 @@ void FindMovedFiles(
                      && source_file.HasIdenticalContent( target_file ) )
                 {
                     target_file.TargetFilePath = SourceFolderPath ~ source_file.RelativePath;
-                    target_file.TargetFileRelativePath = source_file.RelativePath;
+                    target_file.TargetRelativeFilePath = source_file.RelativePath;
                     
                     source_file.Type = FILE_TYPE.Moved;
                     target_file.Type = FILE_TYPE.Moved;
@@ -675,7 +640,7 @@ void FindMovedFiles(
                      && source_file.HasIdenticalContent( target_file ) )
                 {
                     target_file.TargetFilePath = SourceFolderPath ~ source_file.RelativePath;
-                    target_file.TargetFileRelativePath = source_file.RelativePath;
+                    target_file.TargetRelativeFilePath = source_file.RelativePath;
                     
                     source_file.Type = FILE_TYPE.Moved;
                     target_file.Type = FILE_TYPE.Moved;
@@ -713,7 +678,7 @@ void FindAddedFiles(
         if ( source_file.Type == FILE_TYPE.None )
         {
             source_file.TargetFilePath = TargetFolderPath ~ source_file.RelativePath;
-            source_file.TargetFileRelativePath = source_file.RelativePath;
+            source_file.TargetRelativeFilePath = source_file.RelativePath;
             
             source_file.Type = FILE_TYPE.Added;
 
@@ -731,7 +696,7 @@ void PrintChanges(
     {
         foreach ( moved_file; MovedFileArray )
         {
-            writeln( "Moved file : ", moved_file.RelativePath, " => ", moved_file.TargetFileRelativePath );
+            writeln( "Moved file : ", moved_file.RelativePath, " => ", moved_file.TargetRelativeFilePath );
         }
     }
 
@@ -787,7 +752,7 @@ void FixTargetFolder(
     {
         foreach ( moved_file; MovedFileArray )
         {
-            writeln( "Moving file : ", moved_file.RelativePath, " => ", moved_file.TargetFileRelativePath );
+            writeln( "Moving file : ", moved_file.RelativePath, " => ", moved_file.TargetRelativeFilePath );
 
             moved_file.Move();
         }
@@ -903,6 +868,8 @@ void main(
     AddedOptionIsEnabled = false;
     IncludedFolderPathArray = [];
     ExcludedFolderPathArray = [];
+    IncludedFilePathArray = [];
+    ExcludedFilePathArray = [];
     IncludedFileNameArray = [];
     ExcludedFileNameArray = [];
     PrintOptionIsEnabled = false;
@@ -944,7 +911,11 @@ void main(
         {
             if ( argument_array[ 0 ].endsWith( '/' ) )
             {
-                IncludedFolderPathArray ~= argument_array[ 0 ];
+                IncludedFolderPathArray ~= argument_array[ 0 ] ~ '*';
+            }
+            else if ( argument_array[ 0 ].indexOf( '/' ) >= 0 )
+            {
+                IncludedFilePathArray ~= argument_array[ 0 ];
             }
             else
             {
@@ -958,7 +929,11 @@ void main(
         {
             if ( argument_array[ 0 ].endsWith( '/' ) )
             {
-                ExcludedFolderPathArray ~= argument_array[ 0 ];
+                ExcludedFolderPathArray ~= argument_array[ 0 ] ~ '*';
+            }
+            else if ( argument_array[ 0 ].indexOf( '/' ) >= 0 )
+            {
+                ExcludedFilePathArray ~= argument_array[ 0 ];
             }
             else
             {
@@ -1020,19 +995,22 @@ void main(
         writeln( "    --moved" );
         writeln( "    --removed" );
         writeln( "    --added" );
-        writeln( "    --include SUBFOLDER/" );
-        writeln( "    --exclude SUBFOLDER/" );
-        writeln( "    --include *.ext" );
-        writeln( "    --exclude *.ext" );
+        writeln( "    --include FOLDER_FILTER/file_filter" );
+        writeln( "    --exclude FOLDER_FILTER/file_filter" );
+        writeln( "    --include FOLDER_FILTER/" );
+        writeln( "    --exclude FOLDER_FILTER/" );
+        writeln( "    --include file_filter" );
+        writeln( "    --exclude file_filter" );
+        writeln( "    --create" );
         writeln( "    --print" );
         writeln( "    --confirm" );
         writeln( "    --preview" );
         writeln( "    --precision 1" );
         writeln( "    --prefix 128" );
         writeln( "Examples :" );
-        writeln( "    resync --changed --removed --added --exclude .git/ --print --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
-        writeln( "    resync --changed --removed --added --preview SOURCE_FOLDER/ TARGET_FOLDER/" );
-        writeln( "    resync --updated SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --changed --removed --added --exclude \".git/\" --exclude \"*/.git/\" --exclude \"*.tmp\" --print --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --changed --removed --added --print --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --updated --removed --added --preview SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --moved SOURCE_FOLDER/ TARGET_FOLDER/" );
 
         Abort( "Invalid arguments : " ~ argument_array.to!string() );

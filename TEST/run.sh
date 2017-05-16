@@ -1,5 +1,6 @@
 #!/bin/sh
 set -x
-../resync --changed --moved --removed --added --print --confirm --preview --exclude I/ --include *.txt NEW/ OLD/
-../resync --updated --preview NEW/ OLD/
-../resync --updated --preview OLD/ NEW/
+../resync --changed --removed --added --exclude ".git/" --exclude "*/.git/" --exclude "*.tmp" --print --confirm --preview SOURCE_FOLDER/ TARGET_FOLDER/
+../resync --changed --removed --added --print --confirm --preview SOURCE_FOLDER/ TARGET_FOLDER/
+../resync --updated --removed --added --preview SOURCE_FOLDER/ TARGET_FOLDER/
+../resync --moved --preview SOURCE_FOLDER/ TARGET_FOLDER/
