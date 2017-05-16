@@ -6,7 +6,7 @@ Fast folder resynchronizer.
 
 * Efficiently resynchronize big file trees between local disks without computing checksums.
 * Processes the updated, changed, moved, removed and added files independently.
-* Allows to include/exclude files by name, path or folder, using wildcards.
+* Allows to include/exclude files by folder, name or path using wildcards.
 
 ## Limitations
 
