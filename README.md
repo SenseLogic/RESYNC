@@ -31,7 +31,7 @@ resync [options] SOURCE_FOLDER/ TARGET_FOLDER/
 
 ### Options
 
-```bash
+```
 --updated : detect the updated files
 --changed : detect the changed files
 --moved : detect the moved files
