@@ -45,6 +45,7 @@ resync [options] SOURCE_FOLDER/ TARGET_FOLDER/
 --exclude file_filter : exclude these file names
 --print : print the changes
 --confirm : ask confirmation before applying the changes
+--create : create the target folder if it doesn't exist
 --preview : preview the changes without applying them
 --precision 1 : modification time precision in milliseconds
 --prefix 128 : moved file prefix sample size in kilobytes
@@ -56,25 +57,27 @@ resync [options] SOURCE_FOLDER/ TARGET_FOLDER/
 resync --changed --removed --added --exclude ".git/" --exclude "*/.git/" --exclude "*.tmp" --print --confirm SOURCE_FOLDER/ TARGET_FOLDER/
 ```
 
-Detect the changed, removed and added files, excluding the ".git/" subfolders and "\*.tmp" file names, then print these changes and ask confirmation before applying them to the target folder.
+Detects the changed, removed and added files, excluding the ".git/" subfolders and "\*.tmp" file names, prints these changes and asks confirmation before applying them to the target folder.
 
 ```bash
-resync --changed --removed --added --print --confirm SOURCE_FOLDER/ TARGET_FOLDER/
+resync --changed --removed --added --print --confirm --create SOURCE_FOLDER/ TARGET_FOLDER/
 ```
 
-Detect the changed, removed and added files, then print these changes and ask confirmation before applying them to the target folder.
+Detects the changed, removed and added files, prints these changes and asks confirmation before applying them to the target folder.
+
+Creates the target folder if it doesn't exist.
 
 ```bash
 resync --updated --removed --added --preview SOURCE_FOLDER/ TARGET_FOLDER/
 ```
 
-Detect the changed, removed and added files, then preview these changes without applying them to the target folder.
+Detects the changed, removed and added files, and previews these changes without applying them to the target folder.
 
 ```bash
 resync --moved SOURCE_FOLDER/ TARGET_FOLDER/
 ```
 
-Detect the moved files, and apply these changes to the target folder.
+Detects the moved files and apply these changes to the target folder.
 
 ## Version
 

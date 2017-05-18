@@ -245,6 +245,19 @@ class FOLDER
     }
     
     // ~~
+    
+    void Create(
+        )
+    {        
+        writeln( "Creating folder : ", Path );
+        
+        if ( !PreviewOptionIsEnabled )
+        {
+            CreateFolder( Path );
+        }
+    }
+    
+    // ~~
 
     void Read(
         string folder_path
@@ -332,6 +345,7 @@ bool
     AddedOptionIsEnabled,
     ConfirmOptionIsEnabled,
     ChangedOptionIsEnabled,
+    CreateOptionIsEnabled,
     MovedOptionIsEnabled,
     PreviewOptionIsEnabled,
     PrintOptionIsEnabled,
@@ -811,8 +825,20 @@ void SynchronizeFolders(
     TargetFolder.Path = TargetFolderPath;
 
     SourceFolder.Read();
-    TargetFolder.Read();
-
+    
+    if ( TargetFolderPath.exists() )
+    {
+        TargetFolder.Read();
+    }
+    else if ( CreateOptionIsEnabled )
+    {
+        TargetFolder.Create();
+    }
+    else
+    {
+        Abort( "Invalid folder : " ~ TargetFolderPath );
+    }
+    
     UpdatedFileArray = [];
     ChangedFileArray = [];
     MovedFileArray = [];
@@ -874,6 +900,7 @@ void main(
     ExcludedFileNameArray = [];
     PrintOptionIsEnabled = false;
     ConfirmOptionIsEnabled = false;
+    CreateOptionIsEnabled = false;
     PreviewOptionIsEnabled = false;
     PrefixByteCount = 128 * 1024;
     MinimumModificationTimeOffset = msecs( -1 );
@@ -950,6 +977,10 @@ void main(
         {
             ConfirmOptionIsEnabled = true;
         }
+        else if ( option == "--create" )
+        {
+            CreateOptionIsEnabled = true;
+        }
         else if ( option == "--preview" )
         {
             PreviewOptionIsEnabled = true;
@@ -1001,15 +1032,15 @@ void main(
         writeln( "    --exclude FOLDER_FILTER/" );
         writeln( "    --include file_filter" );
         writeln( "    --exclude file_filter" );
-        writeln( "    --create" );
         writeln( "    --print" );
         writeln( "    --confirm" );
+        writeln( "    --create" );
         writeln( "    --preview" );
         writeln( "    --precision 1" );
         writeln( "    --prefix 128" );
         writeln( "Examples :" );
         writeln( "    resync --changed --removed --added --exclude \".git/\" --exclude \"*/.git/\" --exclude \"*.tmp\" --print --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
-        writeln( "    resync --changed --removed --added --print --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --changed --removed --added --print --confirm --create SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --updated --removed --added --preview SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --moved SOURCE_FOLDER/ TARGET_FOLDER/" );
 
