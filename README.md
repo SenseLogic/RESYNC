@@ -1,6 +1,6 @@
 # Resync
 
-Fast local folder synchronizer.
+Local folder synchronizer.
 
 ## Features
 
