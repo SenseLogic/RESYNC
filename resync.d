@@ -796,7 +796,7 @@ void FixTargetFolder(
     {
         foreach ( changed_file; ChangedFileArray )
         {
-            writeln( "Copying file : ", changed_file.RelativePath );
+            writeln( "Changing file : ", changed_file.RelativePath );
 
             changed_file.Copy();
         }
