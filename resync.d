@@ -167,9 +167,9 @@ class FILE
             && ( ByteCount <= PrefixByteCount
                  || GetHash() == other_file.GetHash() );
     }
-    
+
     // ~~
-    
+
     void Remove(
         )
     {
@@ -178,9 +178,9 @@ class FILE
             Path.RemoveFile();
         }
     }
-    
+
     // ~~
-    
+
     void Move(
         )
     {
@@ -219,7 +219,7 @@ class FILE
             " ",
             TargetFilePath,
             " ",
-            TargetRelativeFilePath 
+            TargetRelativeFilePath
             );
     }
 }
@@ -243,20 +243,20 @@ class FOLDER
     {
         return path[ Path.length .. $ ];
     }
-    
+
     // ~~
-    
+
     void Create(
         )
-    {        
+    {
         writeln( "Creating folder : ", Path );
-        
+
         if ( !PreviewOptionIsEnabled )
         {
             CreateFolder( Path );
         }
     }
-    
+
     // ~~
 
     void Read(
@@ -269,10 +269,10 @@ class FOLDER
             relative_folder_path;
         FILE
             file;
-            
+
         relative_folder_path = GetRelativePath( folder_path );
 
-        if ( IsIncludedPath( relative_folder_path,IncludedFolderPathArray, ExcludedFolderPathArray ) )
+        if ( IsIncludedPath( relative_folder_path, IncludedFolderPathArray, ExcludedFolderPathArray ) )
         {
             try
             {
@@ -283,7 +283,7 @@ class FOLDER
                     {
                         file_name = folder_entry.baseName();
                         relative_file_path = GetRelativePath( folder_entry );
-                        
+
                         if ( IsIncludedPath( relative_file_path, IncludedFilePathArray, ExcludedFilePathArray )
                              && IsIncludedPath( file_name, IncludedFileNameArray, ExcludedFileNameArray ) )
                         {
@@ -316,9 +316,9 @@ class FOLDER
             }
         }
     }
-    
+
     // ~~
-    
+
     void Read(
         )
     {
@@ -404,14 +404,14 @@ string GetFolderPath(
 {
     string
         folder_path;
-        
+
     folder_path = file_path.dirName();
-    
+
     if ( folder_path != "" )
     {
         folder_path ~= '/';
     }
-    
+
     return folder_path;
 }
 
@@ -425,16 +425,16 @@ bool IsIncludedPath(
 {
     bool
         path_is_included;
-        
+
     path_is_included = true;
-    
+
     if ( included_path_array.length > 0
          || excluded_path_array.length > 0 )
     {
         if ( included_path_array.length > 0 )
         {
             path_is_included = false;
-            
+
             foreach ( included_path; included_path_array )
             {
                 if ( path.globMatch( included_path ) )
@@ -443,7 +443,7 @@ bool IsIncludedPath(
                 }
             }
         }
-        
+
         if ( excluded_path_array.length > 0
              && path_is_included )
         {
@@ -634,10 +634,10 @@ void FindMovedFiles(
                 {
                     target_file.TargetFilePath = SourceFolderPath ~ source_file.RelativePath;
                     target_file.TargetRelativeFilePath = source_file.RelativePath;
-                    
+
                     source_file.Type = FILE_TYPE.Moved;
                     target_file.Type = FILE_TYPE.Moved;
-                    
+
                     MovedFileArray ~= target_file;
                 }
             }
@@ -655,7 +655,7 @@ void FindMovedFiles(
                 {
                     target_file.TargetFilePath = SourceFolderPath ~ source_file.RelativePath;
                     target_file.TargetRelativeFilePath = source_file.RelativePath;
-                    
+
                     source_file.Type = FILE_TYPE.Moved;
                     target_file.Type = FILE_TYPE.Moved;
 
@@ -693,7 +693,7 @@ void FindAddedFiles(
         {
             source_file.TargetFilePath = TargetFolderPath ~ source_file.RelativePath;
             source_file.TargetRelativeFilePath = source_file.RelativePath;
-            
+
             source_file.Type = FILE_TYPE.Added;
 
             AddedFileArray ~= source_file;
@@ -825,7 +825,7 @@ void SynchronizeFolders(
     TargetFolder.Path = TargetFolderPath;
 
     SourceFolder.Read();
-    
+
     if ( TargetFolderPath.exists() )
     {
         TargetFolder.Read();
@@ -838,7 +838,7 @@ void SynchronizeFolders(
     {
         Abort( "Invalid folder : " ~ TargetFolderPath );
     }
-    
+
     UpdatedFileArray = [];
     ChangedFileArray = [];
     MovedFileArray = [];
@@ -912,7 +912,7 @@ void main(
         option = argument_array[ 0 ];
 
         argument_array = argument_array[ 1 .. $ ];
-        
+
         if ( option == "--updated" )
         {
             UpdatedOptionIsEnabled = true;
@@ -934,7 +934,7 @@ void main(
             AddedOptionIsEnabled = true;
         }
         else if ( option == "--include"
-             && argument_array.length >= 1 )
+                  && argument_array.length >= 1 )
         {
             if ( argument_array[ 0 ].endsWith( '/' ) )
             {
@@ -952,7 +952,7 @@ void main(
             argument_array = argument_array[ 1 .. $ ];
         }
         else if ( option == "--exclude"
-             && argument_array.length >= 1 )
+                  && argument_array.length >= 1 )
         {
             if ( argument_array[ 0 ].endsWith( '/' ) )
             {
@@ -1008,12 +1008,12 @@ void main(
             argument_array = argument_array[ 1 .. $ ];
         }
     }
-    
+
     if ( argument_array.length == 2 )
     {
         SourceFolderPath = argument_array[ 0 ];
         TargetFolderPath = argument_array[ 1 ];
-        
+
         SynchronizeFolders();
     }
     else
@@ -1047,4 +1047,3 @@ void main(
         Abort( "Invalid arguments : " ~ argument_array.to!string() );
     }
 }
-
