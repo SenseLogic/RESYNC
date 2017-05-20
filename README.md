@@ -77,7 +77,7 @@ Detects the updated/removed/added files and previews these changes without apply
 resync --moved SOURCE_FOLDER/ TARGET_FOLDER/
 ```
 
-Detects the moved files and apply these changes to the target folder.
+Detects the moved files and applies these changes to the target folder.
 
 ## Version
 
