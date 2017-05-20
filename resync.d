@@ -27,7 +27,7 @@ import core.time : msecs, Duration;
 import std.conv : to;
 import std.datetime : SysTime;
 import std.digest.md : MD5;
-import std.file : copy, dirEntries, exists, getAttributes, getTimes, mkdir, mkdirRecurse, readText, remove, rename, setAttributes, setTimes, write, SpanMode;
+import std.file : copy, dirEntries, exists, getAttributes, getTimes, mkdir, mkdirRecurse, readText, remove, rename, rmdir, setAttributes, setTimes, write, FileException, SpanMode;
 import std.path : baseName, dirName, globMatch;
 import std.stdio : readln, writeln, File;
 import std.string : endsWith, indexOf, replace, startsWith, toLower;
@@ -173,10 +173,7 @@ class FILE
     void Remove(
         )
     {
-        if ( !PreviewOptionIsEnabled )
-        {
-            Path.RemoveFile();
-        }
+        Path.RemoveFile();
     }
 
     // ~~
@@ -184,10 +181,7 @@ class FILE
     void Move(
         )
     {
-        if ( !PreviewOptionIsEnabled )
-        {
-            Path.MoveFile( TargetFilePath );
-        }
+        Path.MoveFile( TargetFilePath );
     }
 
     // ~~
@@ -195,10 +189,7 @@ class FILE
     void Copy(
         )
     {
-        if ( !PreviewOptionIsEnabled )
-        {
-            Path.CopyFile( TargetFilePath );
-        }
+        Path.CopyFile( TargetFilePath );
     }
 
     // ~~
@@ -226,6 +217,18 @@ class FILE
 
 // ~~
 
+class SUB_FOLDER
+{
+    string
+        Path,
+        RelativePath;
+    bool
+        ItIsEmpty,
+        ItIsEmptied;
+}
+
+// ~~
+
 class FOLDER
 {
     string
@@ -234,6 +237,10 @@ class FOLDER
         FileArray;
     FILE[ string ]
         FileMap;
+    SUB_FOLDER[]
+        SubFolderArray;
+    SUB_FOLDER[ string ]
+        SubFolderMap;
 
     // ~~
 
@@ -246,15 +253,12 @@ class FOLDER
 
     // ~~
 
-    void Create(
+    void Add(
         )
     {
-        writeln( "Creating folder : ", Path );
+        writeln( "Adding folder : ", Path );
 
-        if ( !PreviewOptionIsEnabled )
-        {
-            CreateFolder( Path );
-        }
+        Path.AddFolder();
     }
 
     // ~~
@@ -269,15 +273,28 @@ class FOLDER
             relative_folder_path;
         FILE
             file;
+        SUB_FOLDER
+            sub_folder;
 
         relative_folder_path = GetRelativePath( folder_path );
 
+        sub_folder = new SUB_FOLDER;
+        sub_folder.Path = folder_path;
+        sub_folder.RelativePath = relative_folder_path;
+        sub_folder.ItIsEmpty = true;
+
+        SubFolderArray ~= sub_folder;
+        SubFolderMap[ relative_folder_path ] = sub_folder;
+
         if ( IsIncludedPath( relative_folder_path, IncludedFolderPathArray, ExcludedFolderPathArray ) )
         {
+
             try
             {
                 foreach ( folder_entry; dirEntries( folder_path, SpanMode.shallow ) )
                 {
+                    sub_folder.ItIsEmpty = false;
+
                     if ( folder_entry.isFile()
                          && !folder_entry.isSymlink() )
                     {
@@ -310,7 +327,7 @@ class FOLDER
                     }
                 }
             }
-            catch ( Error error )
+            catch ( FileException file_exception )
             {
                 Abort( "Can't read folder : " ~ folder_path );
             }
@@ -323,6 +340,11 @@ class FOLDER
         )
     {
         writeln( "Reading folder : ", Path );
+
+        FileArray = [];
+        FileMap = null;
+        SubFolderArray = [];
+        SubFolderMap = null;
 
         Read( Path );
     }
@@ -346,6 +368,7 @@ bool
     ConfirmOptionIsEnabled,
     ChangedOptionIsEnabled,
     CreateOptionIsEnabled,
+    EmptiedOptionIsEnabled,
     MovedOptionIsEnabled,
     PreviewOptionIsEnabled,
     PrintOptionIsEnabled,
@@ -412,6 +435,12 @@ string GetFolderPath(
         folder_path ~= '/';
     }
 
+    if ( folder_path == "./"
+         && !file_path.startsWith( '.' ) )
+    {
+        folder_path = "";
+    }
+
     return folder_path;
 }
 
@@ -464,25 +493,72 @@ bool IsIncludedPath(
 
 // ~~
 
-void CreateFolder(
+bool IsEmptyFolder(
     string folder_path
     )
 {
-    string
-        super_folder_path;
+    bool
+        it_is_empty_folder;
 
     try
     {
-        if ( folder_path != ""
-             && folder_path != "/"
-             && !folder_path.exists() )
+        it_is_empty_folder = true;
+
+        foreach ( folder_entry; dirEntries( folder_path, SpanMode.shallow ) )
         {
-            folder_path.mkdirRecurse();
+            it_is_empty_folder = false;
+
+            break;
         }
     }
-    catch ( Error error )
+    catch ( FileException file_exception )
     {
-        Abort( "Can't create folder : " ~ folder_path );
+        Abort( "Can't read folder : " ~ folder_path );
+    }
+
+    return it_is_empty_folder;
+}
+
+// ~~
+
+void AddFolder(
+    string folder_path
+    )
+{
+    if ( !PreviewOptionIsEnabled )
+    {
+        try
+        {
+            if ( folder_path != ""
+                 && folder_path != "/"
+                 && !folder_path.exists() )
+            {
+                folder_path.mkdirRecurse();
+            }
+        }
+        catch ( FileException file_exception )
+        {
+            Abort( "Can't add folder : " ~ folder_path );
+        }
+    }
+}
+
+// ~~
+
+void RemoveFolder(
+    string folder_path
+    )
+{
+    if ( !PreviewOptionIsEnabled )
+    {
+        try
+        {
+            folder_path.rmdir();
+        }
+        catch ( FileException file_exception )
+        {
+            Abort( "Can't create folder : " ~ folder_path );
+        }
     }
 }
 
@@ -492,13 +568,16 @@ void RemoveFile(
     string file_path
     )
 {
-    try
+    if ( !PreviewOptionIsEnabled )
     {
-        file_path.remove();
-    }
-    catch ( Error error )
-    {
-        Abort( "Can't remove file : " ~ file_path );
+        try
+        {
+            file_path.remove();
+        }
+        catch ( FileException file_exception )
+        {
+            Abort( "Can't remove file : " ~ file_path );
+        }
     }
 }
 
@@ -509,21 +588,34 @@ void MoveFile(
     string target_file_path
     )
 {
-    try
-    {
-        SysTime
-            access_time,
-            modification_time;
+    string
+        target_folder_path;
 
-        GetFolderPath( target_file_path ).CreateFolder();
-
-        source_file_path.getTimes( access_time, modification_time );
-        source_file_path.rename( target_file_path );
-        target_file_path.setTimes( access_time, modification_time );
-    }
-    catch ( Error error )
+    if ( !PreviewOptionIsEnabled )
     {
-        Abort( "Can't move file : " ~ source_file_path ~ " => " ~ target_file_path );
+        try
+        {
+            SysTime
+                access_time,
+                modification_time;
+
+            target_folder_path = GetFolderPath( target_file_path );
+
+            if ( !target_folder_path.exists() )
+            {
+                writeln( "Adding folder : ", TargetFolder.GetRelativePath( target_folder_path ) );
+
+                target_folder_path.AddFolder();
+            }
+
+            source_file_path.getTimes( access_time, modification_time );
+            source_file_path.rename( target_file_path );
+            target_file_path.setTimes( access_time, modification_time );
+        }
+        catch ( FileException file_exception )
+        {
+            Abort( "Can't move file : " ~ source_file_path ~ " => " ~ target_file_path );
+        }
     }
 }
 
@@ -534,34 +626,46 @@ void CopyFile(
     string target_file_path
     )
 {
-    try
+    string
+        target_folder_path;
+
+    if ( !PreviewOptionIsEnabled )
     {
-        uint
-            attributes;
-        SysTime
-            access_time,
-            modification_time;
-
-        GetFolderPath( target_file_path ).CreateFolder();
-
-        attributes = source_file_path.getAttributes();
-        source_file_path.getTimes( access_time, modification_time );
-
-        if ( target_file_path.exists() )
+        try
         {
-            target_file_path.setAttributes( 511 );
+            uint
+                attributes;
+            SysTime
+                access_time,
+                modification_time;
+
+            target_folder_path = GetFolderPath( target_file_path );
+
+            if ( !target_folder_path.exists() )
+            {
+                writeln( "Adding folder : ", TargetFolder.GetRelativePath( target_folder_path ) );
+
+                target_folder_path.AddFolder();
+            }
+
+            attributes = source_file_path.getAttributes();
+            source_file_path.getTimes( access_time, modification_time );
+
+            if ( target_file_path.exists() )
+            {
+                target_file_path.setAttributes( 511 );
+            }
+
+            source_file_path.copy( target_file_path );
+
+            target_file_path.setAttributes( attributes );
+            target_file_path.setTimes( access_time, modification_time );
         }
-
-        source_file_path.copy( target_file_path );
-
-        target_file_path.setAttributes( attributes );
-        target_file_path.setTimes( access_time, modification_time );
+        catch ( FileException file_exception )
+        {
+            Abort( "Can't copy file : " ~ source_file_path ~ " => " ~ target_file_path );
+        }
     }
-    catch ( Error error )
-    {
-        Abort( "Can't copy file : " ~ source_file_path ~ " => " ~ target_file_path );
-    }
-
 }
 
 // ~~
@@ -632,7 +736,7 @@ void FindMovedFiles(
                      && source_file.Name == target_file.Name
                      && source_file.HasIdenticalContent( target_file ) )
                 {
-                    target_file.TargetFilePath = SourceFolderPath ~ source_file.RelativePath;
+                    target_file.TargetFilePath = SourceFolder.Path ~ source_file.RelativePath;
                     target_file.TargetRelativeFilePath = source_file.RelativePath;
 
                     source_file.Type = FILE_TYPE.Moved;
@@ -653,7 +757,7 @@ void FindMovedFiles(
                 if ( source_file.Type == FILE_TYPE.None
                      && source_file.HasIdenticalContent( target_file ) )
                 {
-                    target_file.TargetFilePath = SourceFolderPath ~ source_file.RelativePath;
+                    target_file.TargetFilePath = SourceFolder.Path ~ source_file.RelativePath;
                     target_file.TargetRelativeFilePath = source_file.RelativePath;
 
                     source_file.Type = FILE_TYPE.Moved;
@@ -675,6 +779,8 @@ void FindRemovedFiles(
     {
         if ( target_file.Type == FILE_TYPE.None )
         {
+            TargetFolder.SubFolderMap[ target_file.RelativeFolderPath ].ItIsEmptied = true;
+
             target_file.Type = FILE_TYPE.Removed;
 
             RemovedFileArray ~= target_file;
@@ -691,7 +797,7 @@ void FindAddedFiles(
     {
         if ( source_file.Type == FILE_TYPE.None )
         {
-            source_file.TargetFilePath = TargetFolderPath ~ source_file.RelativePath;
+            source_file.TargetFilePath = TargetFolder.Path ~ source_file.RelativePath;
             source_file.TargetRelativeFilePath = source_file.RelativePath;
 
             source_file.Type = FILE_TYPE.Added;
@@ -703,47 +809,149 @@ void FindAddedFiles(
 
 // ~~
 
+void PrintMovedFiles(
+    )
+{
+    foreach ( moved_file; MovedFileArray )
+    {
+        writeln( "Moved file : ", moved_file.RelativePath, " => ", moved_file.TargetRelativeFilePath );
+    }
+}
+
+// ~~
+
+void PrintRemovedFiles(
+    )
+{
+    foreach ( removed_file; RemovedFileArray )
+    {
+        writeln( "Removed file : ", removed_file.RelativePath );
+    }
+}
+
+// ~~
+
+void PrintUpdatedFiles(
+    )
+{
+    foreach ( updated_file; UpdatedFileArray )
+    {
+        writeln( "Updated file : ", updated_file.RelativePath );
+    }
+}
+
+// ~~
+
+void PrintChangedFiles(
+    )
+{
+    foreach ( changed_file; ChangedFileArray )
+    {
+        writeln( "Changed file : ", changed_file.RelativePath );
+    }
+}
+
+// ~~
+
+void PrintAddedFiles(
+    )
+{
+    foreach ( added_file; AddedFileArray )
+    {
+        writeln( "Added file : ", added_file.RelativePath );
+    }
+}
+
+// ~~
+
+void PrintRemovedFolders(
+    )
+{
+    string
+        relative_folder_path;
+    SUB_FOLDER *
+        source_sub_folder;
+
+    foreach_reverse ( target_sub_folder; TargetFolder.SubFolderArray )
+    {
+        if ( target_sub_folder.ItIsEmpty
+             || target_sub_folder.ItIsEmptied )
+        {
+            relative_folder_path = target_sub_folder.RelativePath;
+
+            if ( relative_folder_path != "" )
+            {
+                source_sub_folder = relative_folder_path in SourceFolder.SubFolderMap;
+
+                if ( source_sub_folder is null )
+                {
+                    writeln( "Removing folder : " ~ relative_folder_path );
+                }
+            }
+        }
+    }
+}
+
+// ~~
+
+void PrintAddedFolders(
+    )
+{
+    string
+        relative_folder_path;
+    SUB_FOLDER *
+        target_sub_folder;
+
+    foreach ( source_sub_folder; SourceFolder.SubFolderArray )
+    {
+        if ( source_sub_folder.ItIsEmpty )
+        {
+            relative_folder_path = source_sub_folder.RelativePath;
+
+            target_sub_folder = relative_folder_path in TargetFolder.SubFolderMap;
+
+            if ( target_sub_folder is null )
+            {
+                writeln( "Adding folder : " ~ relative_folder_path );
+            }
+        }
+    }
+}
+
+// ~~
+
 void PrintChanges(
     )
 {
     if ( MovedOptionIsEnabled )
     {
-        foreach ( moved_file; MovedFileArray )
-        {
-            writeln( "Moved file : ", moved_file.RelativePath, " => ", moved_file.TargetRelativeFilePath );
-        }
+        PrintMovedFiles();
     }
 
     if ( RemovedOptionIsEnabled )
     {
-        foreach ( removed_file; RemovedFileArray )
-        {
-            writeln( "Removed file : ", removed_file.RelativePath );
-        }
+        PrintRemovedFiles();
     }
 
     if ( UpdatedOptionIsEnabled )
     {
-        foreach ( updated_file; UpdatedFileArray )
-        {
-            writeln( "Updated file : ", updated_file.RelativePath );
-        }
+        PrintUpdatedFiles();
     }
 
     if ( ChangedOptionIsEnabled )
     {
-        foreach ( changed_file; ChangedFileArray )
-        {
-            writeln( "Changed file : ", changed_file.RelativePath );
-        }
+        PrintChangedFiles();
     }
 
     if ( AddedOptionIsEnabled )
     {
-        foreach ( added_file; AddedFileArray )
-        {
-            writeln( "Added file : ", added_file.RelativePath );
-        }
+        PrintAddedFiles();
+    }
+
+    if ( EmptiedOptionIsEnabled )
+    {
+        PrintRemovedFolders();
+        PrintAddedFolders();
     }
 }
 
@@ -759,57 +967,191 @@ bool AskConfirmation(
 
 // ~~
 
+void MoveFiles(
+    )
+{
+    foreach ( moved_file; MovedFileArray )
+    {
+        writeln( "Moving file : ", moved_file.RelativePath, " => ", moved_file.TargetRelativeFilePath );
+
+        moved_file.Move();
+    }
+}
+
+// ~~
+
+void RemoveFiles(
+    )
+{
+    foreach ( removed_file; RemovedFileArray )
+    {
+        writeln( "Removing file : ", removed_file.RelativePath );
+
+        removed_file.Remove();
+    }
+}
+
+// ~~
+
+void UpdateFiles(
+    )
+{
+    foreach ( updated_file; UpdatedFileArray )
+    {
+        writeln( "Updating file : ", updated_file.RelativePath );
+
+        updated_file.Copy();
+    }
+}
+
+// ~~
+
+void ChangeFiles(
+    )
+{
+    foreach ( changed_file; ChangedFileArray )
+    {
+        writeln( "Changing file : ", changed_file.RelativePath );
+
+        changed_file.Copy();
+    }
+}
+
+// ~~
+
+void AddFiles(
+    )
+{
+    foreach ( added_file; AddedFileArray )
+    {
+        writeln( "Adding file : ", added_file.RelativePath );
+
+        added_file.Copy();
+    }
+}
+
+// ~~
+
+void RemoveFolders(
+    )
+{
+    string
+        relative_folder_path,
+        target_folder_path;
+    SUB_FOLDER *
+        source_sub_folder;
+
+    foreach_reverse ( target_sub_folder; TargetFolder.SubFolderArray )
+    {
+        if ( target_sub_folder.ItIsEmpty
+             || target_sub_folder.ItIsEmptied )
+        {
+            relative_folder_path = target_sub_folder.RelativePath;
+
+            while ( relative_folder_path != "" )
+            {
+                source_sub_folder = relative_folder_path in SourceFolder.SubFolderMap;
+
+                if ( source_sub_folder is null )
+                {
+                    target_folder_path = TargetFolder.Path ~ relative_folder_path;
+
+                    if ( target_folder_path.exists()
+                         && target_folder_path.IsEmptyFolder() )
+                    {
+                        writeln( "Removing folder : ", relative_folder_path );
+
+                        target_folder_path.RemoveFolder();
+
+                        relative_folder_path = GetFolderPath( relative_folder_path );
+
+                        if ( relative_folder_path != "" )
+                        {
+                            TargetFolder.SubFolderMap[ relative_folder_path ].ItIsEmptied = true;
+                        }
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+    }
+}
+
+// ~~
+
+void AddFolders(
+    )
+{
+    string
+        relative_folder_path,
+        target_folder_path;
+    SUB_FOLDER *
+        target_sub_folder;
+
+    foreach ( source_sub_folder; SourceFolder.SubFolderArray )
+    {
+        if ( source_sub_folder.ItIsEmpty )
+        {
+            relative_folder_path = source_sub_folder.RelativePath;
+
+            target_sub_folder = relative_folder_path in TargetFolder.SubFolderMap;
+
+            if ( target_sub_folder is null )
+            {
+                target_folder_path = TargetFolder.Path ~ relative_folder_path;
+
+                if ( !target_folder_path.exists() )
+                {
+                    writeln( "Adding folder : ", relative_folder_path );
+
+                    target_folder_path.AddFolder();
+                }
+            }
+        }
+    }
+}
+
+// ~~
+
 void FixTargetFolder(
     )
 {
     if ( MovedOptionIsEnabled )
     {
-        foreach ( moved_file; MovedFileArray )
-        {
-            writeln( "Moving file : ", moved_file.RelativePath, " => ", moved_file.TargetRelativeFilePath );
-
-            moved_file.Move();
-        }
+        MoveFiles();
     }
 
     if ( RemovedOptionIsEnabled )
     {
-        foreach ( removed_file; RemovedFileArray )
-        {
-            writeln( "Removing file : ", removed_file.RelativePath );
-
-            removed_file.Remove();
-        }
+        RemoveFiles();
     }
 
     if ( UpdatedOptionIsEnabled )
     {
-        foreach ( updated_file; UpdatedFileArray )
-        {
-            writeln( "Updating file : ", updated_file.RelativePath );
-
-            updated_file.Copy();
-        }
+        UpdateFiles();
     }
 
     if ( ChangedOptionIsEnabled )
     {
-        foreach ( changed_file; ChangedFileArray )
-        {
-            writeln( "Changing file : ", changed_file.RelativePath );
-
-            changed_file.Copy();
-        }
+        ChangeFiles();
     }
 
     if ( AddedOptionIsEnabled )
     {
-        foreach ( added_file; AddedFileArray )
-        {
-            writeln( "Adding file : ", added_file.RelativePath );
+        AddFiles();
+    }
 
-            added_file.Copy();
-        }
+    if ( EmptiedOptionIsEnabled )
+    {
+        RemoveFolders();
+        AddFolders();
     }
 }
 
@@ -826,17 +1168,17 @@ void SynchronizeFolders(
 
     SourceFolder.Read();
 
-    if ( TargetFolderPath.exists() )
+    if ( TargetFolder.Path.exists() )
     {
         TargetFolder.Read();
     }
     else if ( CreateOptionIsEnabled )
     {
-        TargetFolder.Create();
+        TargetFolder.Add();
     }
     else
     {
-        Abort( "Invalid folder : " ~ TargetFolderPath );
+        Abort( "Invalid folder : " ~ TargetFolder.Path );
     }
 
     UpdatedFileArray = [];
@@ -892,6 +1234,7 @@ void main(
     MovedOptionIsEnabled = false;
     RemovedOptionIsEnabled = false;
     AddedOptionIsEnabled = false;
+    EmptiedOptionIsEnabled = false;
     IncludedFolderPathArray = [];
     ExcludedFolderPathArray = [];
     IncludedFilePathArray = [];
@@ -932,6 +1275,10 @@ void main(
         else if ( option == "--added" )
         {
             AddedOptionIsEnabled = true;
+        }
+        else if ( option == "--emptied" )
+        {
+            EmptiedOptionIsEnabled = true;
         }
         else if ( option == "--include"
                   && argument_array.length >= 1 )
@@ -1009,7 +1356,9 @@ void main(
         }
     }
 
-    if ( argument_array.length == 2 )
+    if ( argument_array.length == 2
+         && argument_array[ 0 ].endsWith( '/' )
+         && argument_array[ 1 ].endsWith( '/' ) )
     {
         SourceFolderPath = argument_array[ 0 ];
         TargetFolderPath = argument_array[ 1 ];
@@ -1026,6 +1375,7 @@ void main(
         writeln( "    --moved" );
         writeln( "    --removed" );
         writeln( "    --added" );
+        writeln( "    --emptied" );
         writeln( "    --include FOLDER_FILTER/file_filter" );
         writeln( "    --exclude FOLDER_FILTER/file_filter" );
         writeln( "    --include FOLDER_FILTER/" );
@@ -1039,8 +1389,8 @@ void main(
         writeln( "    --precision 1" );
         writeln( "    --prefix 128" );
         writeln( "Examples :" );
-        writeln( "    resync --changed --removed --added --exclude \".git/\" --exclude \"*/.git/\" --exclude \"*.tmp\" --print --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
-        writeln( "    resync --changed --removed --added --print --confirm --create SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --changed --removed --added --emptied --exclude \".git/\" --exclude \"*/.git/\" --exclude \"*.tmp\" --print --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --changed --removed --added --emptied --print --confirm --create SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --updated --removed --added --preview SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --moved SOURCE_FOLDER/ TARGET_FOLDER/" );
 
