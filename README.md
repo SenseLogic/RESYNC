@@ -10,8 +10,7 @@ Local folder synchronizer.
 
 ## Limitations
 
-* The target folder must exist.
-* Empty directories and symbolic links are not processed.
+* Symbolic links are not processed.
 
 ## Installation
 
