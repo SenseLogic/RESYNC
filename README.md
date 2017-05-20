@@ -57,13 +57,13 @@ resync [options] SOURCE_FOLDER/ TARGET_FOLDER/
 resync --changed --removed --added --emptied --exclude ".git/" --exclude "*/.git/" --exclude "*.tmp" --print --confirm SOURCE_FOLDER/ TARGET_FOLDER/
 ```
 
-Detects the changed, removed and added files, excluding the ".git/" subfolders and "\*.tmp" file names, prints these changes and asks confirmation before applying them to the target folder.
+Detects the changed, removed and added files, excluding the ".git/" subfolders and "\*.tmp" file names, detect the emptied folders, prints these changes and asks confirmation before applying them to the target folder.
 
 ```bash
 resync --changed --removed --added --emptied --print --confirm --create SOURCE_FOLDER/ TARGET_FOLDER/
 ```
 
-Detects the changed, removed and added files, prints these changes and asks confirmation before applying them to the target folder.
+Detects the changed, removed and added files, detect the emptied folders, prints these changes and asks confirmation before applying them to the target folder.
 
 Creates the target folder if it doesn't exist.
 
