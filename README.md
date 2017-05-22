@@ -19,7 +19,7 @@ Install the [DMD 2 compiler](https://dlang.org/download.html).
 Build the executable with the following command line :
 
 ```bash
-dmd resync.d
+dmd -m64 resync.d
 ```
 
 ## Command line
