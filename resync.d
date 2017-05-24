@@ -30,7 +30,7 @@ import std.digest.md : MD5;
 import std.file : copy, dirEntries, exists, getAttributes, getTimes, mkdir, mkdirRecurse, readText, remove, rename, rmdir, setAttributes, setTimes, write, FileException, SpanMode;
 import std.path : baseName, dirName, globMatch;
 import std.stdio : readln, writeln, File;
-import std.string : endsWith, indexOf, replace, startsWith, toLower;
+import std.string : endsWith, indexOf, replace, startsWith, toLower, toUpper;
 
 // == GLOBAL
 
@@ -38,6 +38,16 @@ import std.string : endsWith, indexOf, replace, startsWith, toLower;
 
 alias HASH
     = ubyte[ 16 ];
+    
+// ~~
+
+enum CONTENT_MODE
+{
+    Never,
+    Prefix,
+    Smart,
+    Allways
+}
 
 // ~~
 
@@ -68,18 +78,18 @@ class FILE
     long
         ByteCount;
     bool
-        ItHasPrefixHash,
-        ItHasHash;
+        ItHasPrefixContentHash,
+        ItHasContentHash;
     HASH
-        PrefixHash,
-        Hash;
+        PrefixContentHash,
+        ContentHash;
     string
         TargetFilePath,
         TargetRelativeFilePath;
 
     // ~~
 
-    HASH GetHash(
+    HASH GetContentHash(
         long byte_count
         )
     {
@@ -126,32 +136,32 @@ class FILE
 
     // ~~
 
-    HASH GetPrefixHash(
+    HASH GetPrefixContentHash(
         )
     {
-        if ( !ItHasPrefixHash )
+        if ( !ItHasPrefixContentHash )
         {
-            PrefixHash = GetHash( PrefixByteCount );
+            PrefixContentHash = GetContentHash( PrefixContentByteCount );
 
-            ItHasPrefixHash = true;
+            ItHasPrefixContentHash = true;
         }
 
-        return PrefixHash;
+        return PrefixContentHash;
     }
 
     // ~~
 
-    HASH GetHash(
+    HASH GetContentHash(
         )
     {
-        if ( !ItHasHash )
+        if ( !ItHasContentHash )
         {
-            Hash = GetHash( ByteCount );
+            ContentHash = GetContentHash( ByteCount );
 
-            ItHasHash = true;
+            ItHasContentHash = true;
         }
 
-        return Hash;
+        return ContentHash;
     }
 
     // ~~
@@ -161,11 +171,12 @@ class FILE
         )
     {
         return
-            ByteCount == other_file.ByteCount
-            && ( PrefixByteCount <= 0
-                 || GetPrefixHash() == other_file.GetPrefixHash() )
-            && ( ByteCount <= PrefixByteCount
-                 || GetHash() == other_file.GetHash() );
+            ContentMode == CONTENT_MODE.Never
+            || ( ( PrefixContentByteCount == 0
+                   || GetPrefixContentHash() == other_file.GetPrefixContentHash() )
+                 && ( ContentMode == CONTENT_MODE.Prefix
+                      || ByteCount <= PrefixContentByteCount
+                      || GetContentHash() == other_file.GetContentHash() ) );
     }
 
     // ~~
@@ -375,7 +386,7 @@ bool
     RemovedOptionIsEnabled,
     UpdatedOptionIsEnabled;
 long
-    PrefixByteCount;
+    PrefixContentByteCount;
 string
     SourceFolderPath,
     TargetFolderPath;
@@ -389,6 +400,8 @@ string[]
 Duration
     MinimumModificationTimeOffset,
     MaximumModificationTimeOffset;
+CONTENT_MODE
+    ContentMode;
 FILE[]
     AddedFileArray,
     ChangedFileArray,
@@ -417,6 +430,52 @@ void Abort(
     PrintError( message );
 
     exit( -1 );
+}
+
+// ~~
+
+long GetByteCount(
+    string argument
+    )
+{    
+    long
+        byte_count,
+        unit_byte_count;
+        
+    argument = argument.toUpper();
+    
+    if ( argument.endsWith( 'B' ) )
+    {
+        unit_byte_count = 1;
+        
+        argument = argument[ 0 .. $ - 1 ];
+    }
+    if ( argument.endsWith( 'K' ) )
+    {
+        unit_byte_count = 1024;
+        
+        argument = argument[ 0 .. $ - 1 ];
+    }
+    else if ( argument.endsWith( 'M' ) )
+    {
+        unit_byte_count = 1024 * 1024;
+        
+        argument = argument[ 0 .. $ - 1 ];
+    }
+    else if ( argument.endsWith( 'G' ) )
+    {
+        unit_byte_count = 1024 * 1024 * 1024;
+        
+        argument = argument[ 0 .. $ - 1 ];
+    }
+    else
+    {
+        unit_byte_count = 1;
+    }
+    
+    byte_count = argument.to!long() * unit_byte_count;
+    
+    return byte_count;
 }
 
 // ~~
@@ -693,7 +752,9 @@ void FindUpdatedFiles(
 
                 if ( modification_time_offset >= MinimumModificationTimeOffset
                      && modification_time_offset <= MaximumModificationTimeOffset
-                     && source_file.ByteCount == target_file.ByteCount )
+                     && source_file.ByteCount == target_file.ByteCount
+                     && ( ContentMode == CONTENT_MODE.Smart
+                          || source_file.HasIdenticalContent( target_file ) ) )
                 {
                     source_file.Type = FILE_TYPE.Identical;
                     target_file.Type = FILE_TYPE.Identical;
@@ -734,6 +795,7 @@ void FindMovedFiles(
             {
                 if ( source_file.Type == FILE_TYPE.None
                      && source_file.Name == target_file.Name
+                     && source_file.ByteCount == target_file.ByteCount
                      && source_file.HasIdenticalContent( target_file ) )
                 {
                     target_file.TargetFilePath = SourceFolder.Path ~ source_file.RelativePath;
@@ -755,6 +817,7 @@ void FindMovedFiles(
             foreach ( source_file; SourceFolder.FileArray )
             {
                 if ( source_file.Type == FILE_TYPE.None
+                     && source_file.ByteCount == target_file.ByteCount
                      && source_file.HasIdenticalContent( target_file ) )
                 {
                     target_file.TargetFilePath = SourceFolder.Path ~ source_file.RelativePath;
@@ -1245,7 +1308,8 @@ void main(
     ConfirmOptionIsEnabled = false;
     CreateOptionIsEnabled = false;
     PreviewOptionIsEnabled = false;
-    PrefixByteCount = 128 * 1024;
+    ContentMode = CONTENT_MODE.Smart;
+    PrefixContentByteCount = 128 * 1024;
     MinimumModificationTimeOffset = msecs( -1 );
     MaximumModificationTimeOffset = msecs( 1 );
 
@@ -1342,17 +1406,47 @@ void main(
 
             argument_array = argument_array[ 1 .. $ ];
         }
+        else if ( option == "--content"
+                  && argument_array.length >= 1)
+        {
+            if ( argument_array[ 0 ] == "never" )
+            {
+                ContentMode = CONTENT_MODE.Never;
+            }
+            else if ( argument_array[ 0 ] == "prefix" )
+            {
+                ContentMode = CONTENT_MODE.Prefix;
+            }
+            else if ( argument_array[ 0 ] == "smart" )
+            {
+                ContentMode = CONTENT_MODE.Smart;
+            }
+            else if ( argument_array[ 0 ] == "allways" )
+            {
+                ContentMode = CONTENT_MODE.Allways;
+            }
+            else
+            {
+                Abort( "Invalid content mode : " ~ argument_array[ 0 ] );
+            }
+            
+            argument_array = argument_array[ 1 .. $ ];
+        }
         else if ( option == "--prefix"
                   && argument_array.length >= 1 )
         {
-            PrefixByteCount = argument_array[ 0 ].to!long() * 1024;
+            PrefixContentByteCount = argument_array[ 0 ].GetByteCount();
 
-            if ( PrefixByteCount < 0 )
+            if ( PrefixContentByteCount < 0 )
             {
-                PrefixByteCount = 0;
+                PrefixContentByteCount = 0;
             }
 
             argument_array = argument_array[ 1 .. $ ];
+        }
+        else
+        {
+            Abort( "Invalid option : " ~ option );
         }
     }
 
@@ -1387,7 +1481,8 @@ void main(
         writeln( "    --create" );
         writeln( "    --preview" );
         writeln( "    --precision 1" );
-        writeln( "    --prefix 128" );
+        writeln( "    --content smart" );
+        writeln( "    --prefix 128K" );
         writeln( "Examples :" );
         writeln( "    resync --changed --removed --added --emptied --exclude \".git/\" --exclude \"*/.git/\" --exclude \"*.tmp\" --print --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --changed --removed --added --emptied --print --confirm --create SOURCE_FOLDER/ TARGET_FOLDER/" );
