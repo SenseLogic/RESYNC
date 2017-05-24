@@ -49,7 +49,7 @@ resync [options] SOURCE_FOLDER/ TARGET_FOLDER/
 --preview : preview the changes without applying them
 --precision 1 : modification time precision in milliseconds
 --content smart : content comparison mode (never/prefix/smart/allways)
---prefix 128K : moved file prefix sample size (B for bytes, K for kilobytes, M for megabytes, G for gigabytes)
+--prefix 128K : prefix sample size (B for bytes, K for kilobytes, M for megabytes, G for gigabytes)
 ``` 
 
 ### Examples
