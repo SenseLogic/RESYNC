@@ -41,12 +41,12 @@ alias HASH
     
 // ~~
 
-enum CONTENT_MODE
+enum CONTENT_COMPARISON
 {
     Never,
-    Prefix,
-    Smart,
-    Allways
+    Partial,
+    Minimal,
+    Always
 }
 
 // ~~
@@ -78,10 +78,10 @@ class FILE
     long
         ByteCount;
     bool
-        ItHasPrefixContentHash,
+        ItHasSampleHash,
         ItHasContentHash;
     HASH
-        PrefixContentHash,
+        SampleHash,
         ContentHash;
     string
         TargetFilePath,
@@ -136,17 +136,22 @@ class FILE
 
     // ~~
 
-    HASH GetPrefixContentHash(
+    HASH GetSampleHash(
         )
     {
-        if ( !ItHasPrefixContentHash )
+        if ( !ItHasSampleHash )
         {
-            PrefixContentHash = GetContentHash( PrefixContentByteCount );
+            if ( VerboseOptionIsEnabled )
+            {
+                writeln( "Reading sample : ", Path );
+            }
 
-            ItHasPrefixContentHash = true;
+            SampleHash = GetContentHash( SampleByteCount );
+
+            ItHasSampleHash = true;
         }
 
-        return PrefixContentHash;
+        return SampleHash;
     }
 
     // ~~
@@ -156,6 +161,11 @@ class FILE
     {
         if ( !ItHasContentHash )
         {
+            if ( VerboseOptionIsEnabled )
+            {
+                writeln( "Reading content : ", Path );
+            }
+
             ContentHash = GetContentHash( ByteCount );
 
             ItHasContentHash = true;
@@ -171,11 +181,11 @@ class FILE
         )
     {
         return
-            ContentMode == CONTENT_MODE.Never
-            || ( ( PrefixContentByteCount == 0
-                   || GetPrefixContentHash() == other_file.GetPrefixContentHash() )
-                 && ( ContentMode == CONTENT_MODE.Prefix
-                      || ByteCount <= PrefixContentByteCount
+            ContentComparison == CONTENT_COMPARISON.Never
+            || ( ( SampleByteCount == 0
+                   || GetSampleHash() == other_file.GetSampleHash() )
+                 && ( ContentComparison == CONTENT_COMPARISON.Partial
+                      || ByteCount <= SampleByteCount
                       || GetContentHash() == other_file.GetContentHash() ) );
     }
 
@@ -384,9 +394,10 @@ bool
     PreviewOptionIsEnabled,
     PrintOptionIsEnabled,
     RemovedOptionIsEnabled,
-    UpdatedOptionIsEnabled;
+    UpdatedOptionIsEnabled,
+    VerboseOptionIsEnabled;
 long
-    PrefixContentByteCount;
+    SampleByteCount;
 string
     SourceFolderPath,
     TargetFolderPath;
@@ -400,8 +411,8 @@ string[]
 Duration
     MinimumModificationTimeOffset,
     MaximumModificationTimeOffset;
-CONTENT_MODE
-    ContentMode;
+CONTENT_COMPARISON
+    ContentComparison;
 FILE[]
     AddedFileArray,
     ChangedFileArray,
@@ -729,13 +740,18 @@ void CopyFile(
 
 // ~~
 
-void FindUpdatedFiles(
+void FindChangedFiles(
     )
 {
     FILE *
         source_file;
     Duration
         modification_time_offset;
+
+    if ( VerboseOptionIsEnabled )
+    {
+        writeln( "Finding changed files" );
+    }
 
     foreach ( target_file; TargetFolder.FileArray )
     {
@@ -753,7 +769,7 @@ void FindUpdatedFiles(
                 if ( modification_time_offset >= MinimumModificationTimeOffset
                      && modification_time_offset <= MaximumModificationTimeOffset
                      && source_file.ByteCount == target_file.ByteCount
-                     && ( ContentMode == CONTENT_MODE.Smart
+                     && ( ContentComparison == CONTENT_COMPARISON.Minimal
                           || source_file.HasIdenticalContent( target_file ) ) )
                 {
                     source_file.Type = FILE_TYPE.Identical;
@@ -787,6 +803,11 @@ void FindUpdatedFiles(
 void FindMovedFiles(
     )
 {
+    if ( VerboseOptionIsEnabled )
+    {
+        writeln( "Finding moved files" );
+    }
+
     foreach ( target_file; TargetFolder.FileArray )
     {
         if ( target_file.Type == FILE_TYPE.None )
@@ -838,6 +859,11 @@ void FindMovedFiles(
 void FindRemovedFiles(
     )
 {
+    if ( VerboseOptionIsEnabled )
+    {
+        writeln( "Finding removed files" );
+    }
+
     foreach ( target_file; TargetFolder.FileArray )
     {
         if ( target_file.Type == FILE_TYPE.None )
@@ -856,6 +882,11 @@ void FindRemovedFiles(
 void FindAddedFiles(
     )
 {
+    if ( VerboseOptionIsEnabled )
+    {
+        writeln( "Finding added files" );
+    }
+
     foreach ( source_file; SourceFolder.FileArray )
     {
         if ( source_file.Type == FILE_TYPE.None )
@@ -1250,7 +1281,7 @@ void SynchronizeFolders(
     RemovedFileArray = [];
     AddedFileArray = [];
 
-    FindUpdatedFiles();
+    FindChangedFiles();
 
     if ( MovedOptionIsEnabled )
     {
@@ -1307,9 +1338,10 @@ void main(
     PrintOptionIsEnabled = false;
     ConfirmOptionIsEnabled = false;
     CreateOptionIsEnabled = false;
+    VerboseOptionIsEnabled = false;
     PreviewOptionIsEnabled = false;
-    ContentMode = CONTENT_MODE.Smart;
-    PrefixContentByteCount = 128 * 1024;
+    ContentComparison = CONTENT_COMPARISON.Minimal;
+    SampleByteCount = 128 * 1024;
     MinimumModificationTimeOffset = msecs( -1 );
     MaximumModificationTimeOffset = msecs( 1 );
 
@@ -1392,9 +1424,51 @@ void main(
         {
             CreateOptionIsEnabled = true;
         }
+        else if ( option == "--verbose" )
+        {
+            VerboseOptionIsEnabled = true;
+        }
         else if ( option == "--preview" )
         {
             PreviewOptionIsEnabled = true;
+        }
+        else if ( option == "--compare"
+                  && argument_array.length >= 1)
+        {
+            if ( argument_array[ 0 ] == "never" )
+            {
+                ContentComparison = CONTENT_COMPARISON.Never;
+            }
+            else if ( argument_array[ 0 ] == "partial" )
+            {
+                ContentComparison = CONTENT_COMPARISON.Partial;
+            }
+            else if ( argument_array[ 0 ] == "minimal" )
+            {
+                ContentComparison = CONTENT_COMPARISON.Minimal;
+            }
+            else if ( argument_array[ 0 ] == "always" )
+            {
+                ContentComparison = CONTENT_COMPARISON.Always;
+            }
+            else
+            {
+                Abort( "Invalid value : " ~ argument_array[ 0 ] );
+            }
+            
+            argument_array = argument_array[ 1 .. $ ];
+        }
+        else if ( option == "--sample"
+                  && argument_array.length >= 1 )
+        {
+            SampleByteCount = argument_array[ 0 ].GetByteCount();
+
+            if ( SampleByteCount < 0 )
+            {
+                SampleByteCount = 0;
+            }
+
+            argument_array = argument_array[ 1 .. $ ];
         }
         else if ( option == "--precision"
                   && argument_array.length >= 1 )
@@ -1403,44 +1477,6 @@ void main(
 
             MinimumModificationTimeOffset = msecs( -millisecond_count );
             MaximumModificationTimeOffset = msecs( millisecond_count );
-
-            argument_array = argument_array[ 1 .. $ ];
-        }
-        else if ( option == "--content"
-                  && argument_array.length >= 1)
-        {
-            if ( argument_array[ 0 ] == "never" )
-            {
-                ContentMode = CONTENT_MODE.Never;
-            }
-            else if ( argument_array[ 0 ] == "prefix" )
-            {
-                ContentMode = CONTENT_MODE.Prefix;
-            }
-            else if ( argument_array[ 0 ] == "smart" )
-            {
-                ContentMode = CONTENT_MODE.Smart;
-            }
-            else if ( argument_array[ 0 ] == "allways" )
-            {
-                ContentMode = CONTENT_MODE.Allways;
-            }
-            else
-            {
-                Abort( "Invalid content mode : " ~ argument_array[ 0 ] );
-            }
-            
-            argument_array = argument_array[ 1 .. $ ];
-        }
-        else if ( option == "--prefix"
-                  && argument_array.length >= 1 )
-        {
-            PrefixContentByteCount = argument_array[ 0 ].GetByteCount();
-
-            if ( PrefixContentByteCount < 0 )
-            {
-                PrefixContentByteCount = 0;
-            }
 
             argument_array = argument_array[ 1 .. $ ];
         }
@@ -1479,10 +1515,11 @@ void main(
         writeln( "    --print" );
         writeln( "    --confirm" );
         writeln( "    --create" );
+        writeln( "    --verbose" );
         writeln( "    --preview" );
+        writeln( "    --compare minimal" );
+        writeln( "    --sample 128K" );
         writeln( "    --precision 1" );
-        writeln( "    --content smart" );
-        writeln( "    --prefix 128K" );
         writeln( "Examples :" );
         writeln( "    resync --changed --removed --added --emptied --exclude \".git/\" --exclude \"*/.git/\" --exclude \"*.tmp\" --print --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --changed --removed --added --emptied --print --confirm --create SOURCE_FOLDER/ TARGET_FOLDER/" );

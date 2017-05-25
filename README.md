@@ -46,10 +46,11 @@ resync [options] SOURCE_FOLDER/ TARGET_FOLDER/
 --print : print the changes
 --confirm : ask confirmation before applying the changes
 --create : create the target folder if it doesn't exist
+--verbose : show the processing messages
 --preview : preview the changes without applying them
+--compare minimal : content comparison (never/partial/minimal/always)
+--sample 128K : sample size (B for bytes, K for kilobytes, M for megabytes, G for gigabytes)
 --precision 1 : modification time precision in milliseconds
---content smart : content comparison mode (never/prefix/smart/allways)
---prefix 128K : prefix sample size (B for bytes, K for kilobytes, M for megabytes, G for gigabytes)
 ``` 
 
 ### Examples
