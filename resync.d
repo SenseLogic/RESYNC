@@ -97,41 +97,48 @@ class FILE
             step_byte_count;
         File
             file;
-        MD5
+        HASH
             hash;
+        MD5
+            md5;
 
-        if ( byte_count > ByteCount )
+        if ( byte_count > 0 )
         {
-            byte_count = ByteCount;
-        }
-
-        step_byte_count = 4096 * 1024;
-
-        if ( step_byte_count > byte_count )
-        {
-            step_byte_count = byte_count;
-        }
-
-        file = File( Path );
-
-        foreach ( buffer; file.byChunk( step_byte_count ) )
-        {
-            hash.put( buffer );
-
-            byte_count -= step_byte_count;
-
-            if ( byte_count <= 0 )
+            if ( byte_count > ByteCount )
             {
-                break;
+                byte_count = ByteCount;
             }
+
+            step_byte_count = 4096 * 1024;
 
             if ( step_byte_count > byte_count )
             {
                 step_byte_count = byte_count;
             }
+
+            file = File( Path );
+
+            foreach ( buffer; file.byChunk( step_byte_count ) )
+            {
+                md5.put( buffer );
+
+                byte_count -= step_byte_count;
+
+                if ( byte_count <= 0 )
+                {
+                    break;
+                }
+
+                if ( step_byte_count > byte_count )
+                {
+                    step_byte_count = byte_count;
+                }
+            }
+
+            hash = md5.finish();
         }
 
-        return hash.finish();
+        return hash;
     }
 
     // ~~
