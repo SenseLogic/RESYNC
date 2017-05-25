@@ -102,13 +102,13 @@ class FILE
         MD5
             md5;
 
+        if ( byte_count > ByteCount )
+        {
+            byte_count = ByteCount;
+        }
+
         if ( byte_count > 0 )
         {
-            if ( byte_count > ByteCount )
-            {
-                byte_count = ByteCount;
-            }
-
             step_byte_count = 4096 * 1024;
 
             if ( step_byte_count > byte_count )
