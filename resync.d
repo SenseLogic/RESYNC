@@ -784,20 +784,19 @@ void FindChangedFiles(
                 }
                 else
                 {
-                    if ( source_file.ModificationTime < target_file.ModificationTime
-                         || ChangedOptionIsEnabled )
-                    {
-                        source_file.Type = FILE_TYPE.Changed;
-                        target_file.Type = FILE_TYPE.Changed;
-
-                        ChangedFileArray ~= *source_file;
-                    }
-                    else
+                    if ( source_file.ModificationTime > target_file.ModificationTime )
                     {
                         source_file.Type = FILE_TYPE.Updated;
                         target_file.Type = FILE_TYPE.Updated;
 
                         UpdatedFileArray ~= *source_file;
+                    }
+                    else
+                    {
+                        source_file.Type = FILE_TYPE.Changed;
+                        target_file.Type = FILE_TYPE.Changed;
+
+                        ChangedFileArray ~= *source_file;
                     }
                 }
             }
@@ -1528,8 +1527,8 @@ void main(
         writeln( "    --sample 128K" );
         writeln( "    --precision 1" );
         writeln( "Examples :" );
-        writeln( "    resync --changed --removed --added --emptied --exclude \".git/\" --exclude \"*/.git/\" --exclude \"*.tmp\" --print --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
-        writeln( "    resync --changed --removed --added --emptied --print --confirm --create SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --updated --changed --removed --added --emptied --exclude \".git/\" --exclude \"*/.git/\" --exclude \"*.tmp\" --print --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --updated --changed --removed --added --emptied --print --confirm --create SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --updated --removed --added --preview SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --moved SOURCE_FOLDER/ TARGET_FOLDER/" );
 
