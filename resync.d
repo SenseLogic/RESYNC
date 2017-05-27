@@ -479,6 +479,19 @@ void Abort(
 
 // ~~
 
+void Abort(
+    string message,
+    FileException file_exception
+    )
+{
+    PrintError( message );
+    PrintError( file_exception.msg );
+
+    exit( -1 );
+}
+
+// ~~
+
 long GetByteCount(
     string argument
     )
@@ -624,7 +637,7 @@ bool IsEmptyFolder(
     }
     catch ( FileException file_exception )
     {
-        Abort( "Can't read folder : " ~ folder_path );
+        Abort( "Can't read folder : " ~ folder_path, file_exception );
     }
 
     return it_is_empty_folder;
@@ -649,7 +662,7 @@ void AddFolder(
         }
         catch ( FileException file_exception )
         {
-            Abort( "Can't add folder : " ~ folder_path );
+            Abort( "Can't add folder : " ~ folder_path, file_exception );
         }
     }
 }
@@ -668,7 +681,7 @@ void RemoveFolder(
         }
         catch ( FileException file_exception )
         {
-            Abort( "Can't create folder : " ~ folder_path );
+            Abort( "Can't create folder : " ~ folder_path, file_exception );
         }
     }
 }
@@ -687,7 +700,7 @@ void RemoveFile(
         }
         catch ( FileException file_exception )
         {
-            Abort( "Can't remove file : " ~ file_path );
+            Abort( "Can't remove file : " ~ file_path, file_exception );
         }
     }
 }
@@ -724,7 +737,7 @@ void MoveFile(
         }
         catch ( FileException file_exception )
         {
-            Abort( "Can't move file : " ~ source_file_path ~ " => " ~ target_file_path );
+            Abort( "Can't move file : " ~ source_file_path ~ " => " ~ target_file_path, file_exception );
         }
     }
 }
@@ -754,7 +767,7 @@ void AdjustFile(
         }
         catch ( FileException file_exception )
         {
-            Abort( "Can't adjust file : " ~ source_file_path ~ " => " ~ target_file_path );
+            Abort( "Can't adjust file : " ~ source_file_path ~ " => " ~ target_file_path, file_exception );
         }
     }
 }
@@ -802,7 +815,7 @@ void CopyFile(
         }
         catch ( FileException file_exception )
         {
-            Abort( "Can't copy file : " ~ source_file_path ~ " => " ~ target_file_path );
+            Abort( "Can't copy file : " ~ source_file_path ~ " => " ~ target_file_path, file_exception );
         }
     }
 }
@@ -894,7 +907,7 @@ void FindMovedFiles(
                      && source_file.ByteCount == target_file.ByteCount
                      && source_file.HasIdenticalContent( target_file ) )
                 {
-                    target_file.TargetFilePath = SourceFolder.Path ~ source_file.RelativePath;
+                    target_file.TargetFilePath = TargetFolder.Path ~ source_file.RelativePath;
                     target_file.TargetRelativeFilePath = source_file.RelativePath;
 
                     source_file.Type = FILE_TYPE.Moved;
@@ -916,7 +929,7 @@ void FindMovedFiles(
                      && source_file.ByteCount == target_file.ByteCount
                      && source_file.HasIdenticalContent( target_file ) )
                 {
-                    target_file.TargetFilePath = SourceFolder.Path ~ source_file.RelativePath;
+                    target_file.TargetFilePath = TargetFolder.Path ~ source_file.RelativePath;
                     target_file.TargetRelativeFilePath = source_file.RelativePath;
 
                     source_file.Type = FILE_TYPE.Moved;
@@ -983,7 +996,8 @@ void PrintMovedFiles(
 {
     foreach ( moved_file; MovedFileArray )
     {
-        writeln( "Moved file : ", moved_file.RelativePath, " => ", moved_file.TargetRelativeFilePath );
+        writeln( "Moved file : ", moved_file.RelativePath );
+        writeln( "             ", moved_file.TargetRelativeFilePath );
     }
 }
 
