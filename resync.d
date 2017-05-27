@@ -1542,8 +1542,8 @@ void main(
                   && argument_array.length >= 3 )
         {
             MinimumSampleByteCount = argument_array[ 0 ].GetByteCount();
-            MediumSampleByteCount = argument_array[ 0 ].GetByteCount();
-            MaximumSampleByteCount = argument_array[ 0 ].GetByteCount();
+            MediumSampleByteCount = argument_array[ 1 ].GetByteCount();
+            MaximumSampleByteCount = argument_array[ 2 ].GetByteCount();
 
             argument_array = argument_array[ 3 .. $ ];
         }
