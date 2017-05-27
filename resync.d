@@ -38,16 +38,6 @@ import std.string : endsWith, indexOf, replace, startsWith, toLower, toUpper;
 
 alias HASH
     = ubyte[ 16 ];
-    
-// ~~
-
-enum CONTENT_COMPARISON
-{
-    None,
-    Smart,
-    Sample,
-    All
-}
 
 // ~~
 
@@ -78,18 +68,20 @@ class FILE
     long
         ByteCount;
     bool
-        ItHasSampleHash,
-        ItHasContentHash;
+        ItHasMinimumSampleHash,
+        ItHasMediumSampleHash,
+        ItHasMaximumSampleHash;
     HASH
-        SampleHash,
-        ContentHash;
+        MinimumSampleHash,
+        MediumSampleHash,
+        MaximumSampleHash;
     string
         TargetFilePath,
         TargetRelativeFilePath;
 
     // ~~
 
-    HASH GetContentHash(
+    HASH GetSampleHash(
         long byte_count
         )
     {
@@ -143,42 +135,62 @@ class FILE
 
     // ~~
 
-    HASH GetSampleHash(
+    HASH GetMinimumSampleHash(
         )
     {
-        if ( !ItHasSampleHash )
+        if ( !ItHasMinimumSampleHash )
         {
             if ( VerboseOptionIsEnabled )
             {
-                writeln( "Reading sample : ", Path );
+                writeln( "Reading minimum sample : ", Path );
             }
 
-            SampleHash = GetContentHash( SampleByteCount );
+            MinimumSampleHash = GetSampleHash( MinimumSampleByteCount );
 
-            ItHasSampleHash = true;
+            ItHasMinimumSampleHash = true;
         }
 
-        return SampleHash;
+        return MinimumSampleHash;
     }
 
     // ~~
 
-    HASH GetContentHash(
+    HASH GetMediumSampleHash(
         )
     {
-        if ( !ItHasContentHash )
+        if ( !ItHasMediumSampleHash )
         {
             if ( VerboseOptionIsEnabled )
             {
-                writeln( "Reading content : ", Path );
+                writeln( "Reading medium sample : ", Path );
             }
 
-            ContentHash = GetContentHash( ByteCount );
+            MediumSampleHash = GetSampleHash( MediumSampleByteCount );
 
-            ItHasContentHash = true;
+            ItHasMediumSampleHash = true;
         }
 
-        return ContentHash;
+        return MediumSampleHash;
+    }
+
+    // ~~
+
+    HASH GetMaximumSampleHash(
+        )
+    {
+        if ( !ItHasMaximumSampleHash )
+        {
+            if ( VerboseOptionIsEnabled )
+            {
+                writeln( "Reading maximum sample : ", Path );
+            }
+
+            MaximumSampleHash = GetSampleHash( MaximumSampleByteCount );
+
+            ItHasMaximumSampleHash = true;
+        }
+
+        return MaximumSampleHash;
     }
 
     // ~~
@@ -188,12 +200,16 @@ class FILE
         )
     {
         return
-            ContentComparison == CONTENT_COMPARISON.None
-            || ( ( SampleByteCount == 0
-                   || GetSampleHash() == other_file.GetSampleHash() )
-                 && ( ContentComparison == CONTENT_COMPARISON.Sample
-                      || ByteCount <= SampleByteCount
-                      || GetContentHash() == other_file.GetContentHash() ) );
+            ( MinimumSampleByteCount == 0
+              || GetMinimumSampleHash() == other_file.GetMinimumSampleHash() )
+            && ( MediumSampleByteCount == 0
+                 || ByteCount <= MinimumSampleByteCount
+                 || MediumSampleByteCount <= MinimumSampleByteCount
+                 || GetMediumSampleHash() == other_file.GetMediumSampleHash() )
+            && ( MaximumSampleByteCount == 0
+                 || ByteCount <= MediumSampleByteCount
+                 || MaximumSampleByteCount <= MediumSampleByteCount
+                 || GetMaximumSampleHash() == other_file.GetMaximumSampleHash() );
     }
 
     // ~~
@@ -412,7 +428,9 @@ bool
     UpdatedOptionIsEnabled,
     VerboseOptionIsEnabled;
 long
-    SampleByteCount;
+    MinimumSampleByteCount,
+    MediumSampleByteCount,
+    MaximumSampleByteCount;
 string
     SourceFolderPath,
     TargetFolderPath;
@@ -428,8 +446,6 @@ Duration
     PositiveAdjustedTimeOffset,
     NegativeAllowedTimeOffset,
     PositiveAllowedTimeOffset;
-CONTENT_COMPARISON
-    ContentComparison;
 FILE[]
     AddedFileArray,
     AdjustedFileArray,
@@ -471,38 +487,45 @@ long GetByteCount(
         byte_count,
         unit_byte_count;
         
-    argument = argument.toUpper();
+    argument = argument.toLower();
     
-    if ( argument.endsWith( 'B' ) )
+    if ( argument == "all" )
     {
-        unit_byte_count = 1;
-        
-        argument = argument[ 0 .. $ - 1 ];
-    }
-    if ( argument.endsWith( 'K' ) )
-    {
-        unit_byte_count = 1024;
-        
-        argument = argument[ 0 .. $ - 1 ];
-    }
-    else if ( argument.endsWith( 'M' ) )
-    {
-        unit_byte_count = 1024 * 1024;
-        
-        argument = argument[ 0 .. $ - 1 ];
-    }
-    else if ( argument.endsWith( 'G' ) )
-    {
-        unit_byte_count = 1024 * 1024 * 1024;
-        
-        argument = argument[ 0 .. $ - 1 ];
+        byte_count = long.max;
     }
     else
     {
-        unit_byte_count = 1;
+        if ( argument.endsWith( 'b' ) )
+        {
+            unit_byte_count = 1;
+            
+            argument = argument[ 0 .. $ - 1 ];
+        }
+        if ( argument.endsWith( 'k' ) )
+        {
+            unit_byte_count = 1024;
+            
+            argument = argument[ 0 .. $ - 1 ];
+        }
+        else if ( argument.endsWith( 'm' ) )
+        {
+            unit_byte_count = 1024 * 1024;
+            
+            argument = argument[ 0 .. $ - 1 ];
+        }
+        else if ( argument.endsWith( 'g' ) )
+        {
+            unit_byte_count = 1024 * 1024 * 1024;
+            
+            argument = argument[ 0 .. $ - 1 ];
+        }
+        else
+        {
+            unit_byte_count = 1;
+        }
+        
+        byte_count = argument.to!long() * unit_byte_count;
     }
-    
-    byte_count = argument.to!long() * unit_byte_count;
     
     return byte_count;
 }
@@ -815,7 +838,7 @@ void FindChangedFiles(
                 if ( modification_time_offset >= NegativeAllowedTimeOffset
                      && modification_time_offset <= PositiveAllowedTimeOffset
                      && source_file.ByteCount == target_file.ByteCount
-                     && ( ContentComparison == CONTENT_COMPARISON.Smart
+                     && ( MinimumSampleByteCount == 0
                           || source_file.HasIdenticalContent( target_file ) ) )
                 {
                     source_file.Type = FILE_TYPE.Identical;
@@ -1430,8 +1453,9 @@ void main(
     ConfirmOptionIsEnabled = false;
     CreateOptionIsEnabled = false;
     PreviewOptionIsEnabled = false;
-    ContentComparison = CONTENT_COMPARISON.Smart;
-    SampleByteCount = 1 * 1024 * 1024;
+    MinimumSampleByteCount = 0;
+    MediumSampleByteCount = "1M".GetByteCount();
+    MaximumSampleByteCount = "all".GetByteCount();
     NegativeAllowedTimeOffset = msecs( -2 );
     PositiveAllowedTimeOffset = msecs( 2 );
 
@@ -1514,43 +1538,14 @@ void main(
 
             argument_array = argument_array[ 1 .. $ ];
         }
-        else if ( option == "--compare"
-                  && argument_array.length >= 1)
-        {
-            if ( argument_array[ 0 ] == "none" )
-            {
-                ContentComparison = CONTENT_COMPARISON.None;
-            }
-            else if ( argument_array[ 0 ] == "smart" )
-            {
-                ContentComparison = CONTENT_COMPARISON.Smart;
-            }
-            else if ( argument_array[ 0 ] == "sample" )
-            {
-                ContentComparison = CONTENT_COMPARISON.Sample;
-            }
-            else if ( argument_array[ 0 ] == "all" )
-            {
-                ContentComparison = CONTENT_COMPARISON.All;
-            }
-            else
-            {
-                Abort( "Invalid value : " ~ argument_array[ 0 ] );
-            }
-            
-            argument_array = argument_array[ 1 .. $ ];
-        }
         else if ( option == "--sample"
-                  && argument_array.length >= 1 )
+                  && argument_array.length >= 3 )
         {
-            SampleByteCount = argument_array[ 0 ].GetByteCount();
+            MinimumSampleByteCount = argument_array[ 0 ].GetByteCount();
+            MediumSampleByteCount = argument_array[ 0 ].GetByteCount();
+            MaximumSampleByteCount = argument_array[ 0 ].GetByteCount();
 
-            if ( SampleByteCount < 0 )
-            {
-                SampleByteCount = 0;
-            }
-
-            argument_array = argument_array[ 1 .. $ ];
+            argument_array = argument_array[ 3 .. $ ];
         }
         else if ( option == "--allowed"
                   && argument_array.length >= 1 )
@@ -1615,8 +1610,7 @@ void main(
         writeln( "    --exclude FOLDER_FILTER/" );
         writeln( "    --include file_filter" );
         writeln( "    --exclude file_filter" );
-        writeln( "    --compare smart" );
-        writeln( "    --sample 1M" );
+        writeln( "    --sample 0 1M all" );
         writeln( "    --allowed 2" );
         writeln( "    --verbose" );
         writeln( "    --print" );
@@ -1624,10 +1618,9 @@ void main(
         writeln( "    --create" );
         writeln( "    --preview" );
         writeln( "Examples :" );
-        writeln( "    resync --updated --changed --removed --added --emptied --exclude \".git/\" --exclude \"*/.git/\" --exclude \"*.tmp\" --print --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --updated --changed --removed --added --emptied --print --confirm --create SOURCE_FOLDER/ TARGET_FOLDER/" );
-        writeln( "    resync --updated --removed --added --preview SOURCE_FOLDER/ TARGET_FOLDER/" );
-        writeln( "    resync --moved SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --updated --changed --removed --added --emptied --compare sample --sample 128K 1M 1M --verbose --print --confirm --preview SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --updated --changed --removed --added --emptied --exclude \".git/\" --exclude \"*/.git/\" --exclude \"*.tmp\" --print --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
 
         Abort( "Invalid arguments : " ~ argument_array.to!string() );
     }
