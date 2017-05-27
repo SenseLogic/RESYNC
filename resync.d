@@ -43,10 +43,10 @@ alias HASH
 
 enum CONTENT_COMPARISON
 {
-    Never,
-    Partial,
-    Minimal,
-    Always
+    None,
+    Smart,
+    Sample,
+    All
 }
 
 // ~~
@@ -188,10 +188,10 @@ class FILE
         )
     {
         return
-            ContentComparison == CONTENT_COMPARISON.Never
+            ContentComparison == CONTENT_COMPARISON.None
             || ( ( SampleByteCount == 0
                    || GetSampleHash() == other_file.GetSampleHash() )
-                 && ( ContentComparison == CONTENT_COMPARISON.Partial
+                 && ( ContentComparison == CONTENT_COMPARISON.Sample
                       || ByteCount <= SampleByteCount
                       || GetContentHash() == other_file.GetContentHash() ) );
     }
@@ -210,6 +210,14 @@ class FILE
         )
     {
         Path.MoveFile( TargetFilePath );
+    }
+
+    // ~~
+
+    void Adjust(
+        )
+    {
+        Path.AdjustFile( TargetFilePath );
     }
 
     // ~~
@@ -316,7 +324,6 @@ class FOLDER
 
         if ( IsIncludedPath( relative_folder_path, IncludedFolderPathArray, ExcludedFolderPathArray ) )
         {
-
             try
             {
                 foreach ( folder_entry; dirEntries( folder_path, SpanMode.shallow ) )
@@ -393,6 +400,7 @@ class FOLDER
 
 bool
     AddedOptionIsEnabled,
+    AdjustedOptionIsEnabled,
     ConfirmOptionIsEnabled,
     ChangedOptionIsEnabled,
     CreateOptionIsEnabled,
@@ -416,12 +424,15 @@ string[]
     IncludedFileNameArray,
     ExcludedFileNameArray;
 Duration
-    MinimumModificationTimeOffset,
-    MaximumModificationTimeOffset;
+    NegativeAdjustedTimeOffset,
+    PositiveAdjustedTimeOffset,
+    NegativeAllowedTimeOffset,
+    PositiveAllowedTimeOffset;
 CONTENT_COMPARISON
     ContentComparison;
 FILE[]
     AddedFileArray,
+    AdjustedFileArray,
     ChangedFileArray,
     MovedFileArray,
     RemovedFileArray,
@@ -667,15 +678,14 @@ void MoveFile(
 {
     string
         target_folder_path;
+    SysTime
+        access_time,
+        modification_time;
 
     if ( !PreviewOptionIsEnabled )
     {
         try
         {
-            SysTime
-                access_time,
-                modification_time;
-
             target_folder_path = GetFolderPath( target_file_path );
 
             if ( !target_folder_path.exists() )
@@ -698,6 +708,36 @@ void MoveFile(
 
 // ~~
 
+void AdjustFile(
+    string source_file_path,
+    string target_file_path
+    )
+{    
+    uint
+        attributes;
+    SysTime
+        access_time,
+        modification_time;
+
+    if ( !PreviewOptionIsEnabled )
+    {
+        try
+        {
+            attributes = source_file_path.getAttributes();
+            source_file_path.getTimes( access_time, modification_time );
+
+            target_file_path.setAttributes( attributes );
+            target_file_path.setTimes( access_time, modification_time );
+        }
+        catch ( FileException file_exception )
+        {
+            Abort( "Can't adjust file : " ~ source_file_path ~ " => " ~ target_file_path );
+        }
+    }
+}
+
+// ~~
+
 void CopyFile(
     string source_file_path,
     string target_file_path
@@ -705,17 +745,16 @@ void CopyFile(
 {
     string
         target_folder_path;
+    uint
+        attributes;
+    SysTime
+        access_time,
+        modification_time;
 
     if ( !PreviewOptionIsEnabled )
     {
         try
         {
-            uint
-                attributes;
-            SysTime
-                access_time,
-                modification_time;
-
             target_folder_path = GetFolderPath( target_file_path );
 
             if ( !target_folder_path.exists() )
@@ -773,14 +812,21 @@ void FindChangedFiles(
 
                 modification_time_offset = source_file.ModificationTime - target_file.ModificationTime;
 
-                if ( modification_time_offset >= MinimumModificationTimeOffset
-                     && modification_time_offset <= MaximumModificationTimeOffset
+                if ( modification_time_offset >= NegativeAllowedTimeOffset
+                     && modification_time_offset <= PositiveAllowedTimeOffset
                      && source_file.ByteCount == target_file.ByteCount
-                     && ( ContentComparison == CONTENT_COMPARISON.Minimal
+                     && ( ContentComparison == CONTENT_COMPARISON.Smart
                           || source_file.HasIdenticalContent( target_file ) ) )
                 {
                     source_file.Type = FILE_TYPE.Identical;
                     target_file.Type = FILE_TYPE.Identical;
+                    
+                    if ( AdjustedOptionIsEnabled
+                         && ( modification_time_offset <= NegativeAdjustedTimeOffset
+                              || modification_time_offset >= PositiveAdjustedTimeOffset ) )
+                    {
+                        AdjustedFileArray ~= *source_file;
+                    }
                 }
                 else
                 {
@@ -931,6 +977,17 @@ void PrintRemovedFiles(
 
 // ~~
 
+void PrintAdjustedFiles(
+    )
+{
+    foreach ( adjusted_file; AdjustedFileArray )
+    {
+        writeln( "Adjusted file : ", adjusted_file.RelativePath );
+    }
+}
+
+// ~~
+
 void PrintUpdatedFiles(
     )
 {
@@ -1033,6 +1090,11 @@ void PrintChanges(
         PrintRemovedFiles();
     }
 
+    if ( AdjustedOptionIsEnabled )
+    {
+        PrintAdjustedFiles();
+    }
+
     if ( UpdatedOptionIsEnabled )
     {
         PrintUpdatedFiles();
@@ -1088,6 +1150,19 @@ void RemoveFiles(
         writeln( "Removing file : ", removed_file.RelativePath );
 
         removed_file.Remove();
+    }
+}
+
+// ~~
+
+void AdjustFiles(
+    )
+{
+    foreach ( adjusted_file; AdjustedFileArray )
+    {
+        writeln( "Adjusting file : ", adjusted_file.RelativePath );
+
+        adjusted_file.Adjust();
     }
 }
 
@@ -1233,6 +1308,11 @@ void FixTargetFolder(
         RemoveFiles();
     }
 
+    if ( AdjustedOptionIsEnabled )
+    {
+        AdjustFiles();
+    }
+    
     if ( UpdatedOptionIsEnabled )
     {
         UpdateFiles();
@@ -1281,6 +1361,7 @@ void SynchronizeFolders(
         Abort( "Invalid folder : " ~ TargetFolder.Path );
     }
 
+    AdjustedFileArray = [];
     UpdatedFileArray = [];
     ChangedFileArray = [];
     MovedFileArray = [];
@@ -1329,6 +1410,9 @@ void main(
 
     argument_array = argument_array[ 1 .. $ ];
 
+    AdjustedOptionIsEnabled = false;
+    NegativeAdjustedTimeOffset = msecs( 1 );
+    PositiveAdjustedTimeOffset = msecs( 1 );
     UpdatedOptionIsEnabled = false;
     ChangedOptionIsEnabled = false;
     MovedOptionIsEnabled = false;
@@ -1341,15 +1425,15 @@ void main(
     ExcludedFilePathArray = [];
     IncludedFileNameArray = [];
     ExcludedFileNameArray = [];
+    VerboseOptionIsEnabled = false;
     PrintOptionIsEnabled = false;
     ConfirmOptionIsEnabled = false;
     CreateOptionIsEnabled = false;
-    VerboseOptionIsEnabled = false;
     PreviewOptionIsEnabled = false;
-    ContentComparison = CONTENT_COMPARISON.Minimal;
-    SampleByteCount = 128 * 1024;
-    MinimumModificationTimeOffset = msecs( -1 );
-    MaximumModificationTimeOffset = msecs( 1 );
+    ContentComparison = CONTENT_COMPARISON.Smart;
+    SampleByteCount = 1 * 1024 * 1024;
+    NegativeAllowedTimeOffset = msecs( -2 );
+    PositiveAllowedTimeOffset = msecs( 2 );
 
     while ( argument_array.length >= 1
             && argument_array[ 0 ].startsWith( "--" ) )
@@ -1358,7 +1442,19 @@ void main(
 
         argument_array = argument_array[ 1 .. $ ];
 
-        if ( option == "--updated" )
+        if ( option == "--adjusted"
+                  && argument_array.length >= 1 )
+        {
+            AdjustedOptionIsEnabled = true;
+            
+            millisecond_count = argument_array[ 0 ].to!long();
+
+            NegativeAdjustedTimeOffset = msecs( -millisecond_count );
+            PositiveAdjustedTimeOffset = msecs( millisecond_count );
+
+            argument_array = argument_array[ 1 .. $ ];
+        }
+        else if ( option == "--updated" )
         {
             UpdatedOptionIsEnabled = true;
         }
@@ -1418,44 +1514,24 @@ void main(
 
             argument_array = argument_array[ 1 .. $ ];
         }
-        else if ( option == "--print" )
-        {
-            PrintOptionIsEnabled = true;
-        }
-        else if ( option == "--confirm" )
-        {
-            ConfirmOptionIsEnabled = true;
-        }
-        else if ( option == "--create" )
-        {
-            CreateOptionIsEnabled = true;
-        }
-        else if ( option == "--verbose" )
-        {
-            VerboseOptionIsEnabled = true;
-        }
-        else if ( option == "--preview" )
-        {
-            PreviewOptionIsEnabled = true;
-        }
         else if ( option == "--compare"
                   && argument_array.length >= 1)
         {
-            if ( argument_array[ 0 ] == "never" )
+            if ( argument_array[ 0 ] == "none" )
             {
-                ContentComparison = CONTENT_COMPARISON.Never;
+                ContentComparison = CONTENT_COMPARISON.None;
             }
-            else if ( argument_array[ 0 ] == "partial" )
+            else if ( argument_array[ 0 ] == "smart" )
             {
-                ContentComparison = CONTENT_COMPARISON.Partial;
+                ContentComparison = CONTENT_COMPARISON.Smart;
             }
-            else if ( argument_array[ 0 ] == "minimal" )
+            else if ( argument_array[ 0 ] == "sample" )
             {
-                ContentComparison = CONTENT_COMPARISON.Minimal;
+                ContentComparison = CONTENT_COMPARISON.Sample;
             }
-            else if ( argument_array[ 0 ] == "always" )
+            else if ( argument_array[ 0 ] == "all" )
             {
-                ContentComparison = CONTENT_COMPARISON.Always;
+                ContentComparison = CONTENT_COMPARISON.All;
             }
             else
             {
@@ -1476,15 +1552,35 @@ void main(
 
             argument_array = argument_array[ 1 .. $ ];
         }
-        else if ( option == "--precision"
+        else if ( option == "--allowed"
                   && argument_array.length >= 1 )
         {
             millisecond_count = argument_array[ 0 ].to!long();
 
-            MinimumModificationTimeOffset = msecs( -millisecond_count );
-            MaximumModificationTimeOffset = msecs( millisecond_count );
+            NegativeAllowedTimeOffset = msecs( -millisecond_count );
+            PositiveAllowedTimeOffset = msecs( millisecond_count );
 
             argument_array = argument_array[ 1 .. $ ];
+        }
+        else if ( option == "--verbose" )
+        {
+            VerboseOptionIsEnabled = true;
+        }
+        else if ( option == "--print" )
+        {
+            PrintOptionIsEnabled = true;
+        }
+        else if ( option == "--confirm" )
+        {
+            ConfirmOptionIsEnabled = true;
+        }
+        else if ( option == "--create" )
+        {
+            CreateOptionIsEnabled = true;
+        }
+        else if ( option == "--preview" )
+        {
+            PreviewOptionIsEnabled = true;
         }
         else
         {
@@ -1506,6 +1602,7 @@ void main(
         writeln( "Usage :" );
         writeln( "    resync [options] SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "Options :" );
+        writeln( "    --adjusted 1" );
         writeln( "    --updated" );
         writeln( "    --changed" );
         writeln( "    --moved" );
@@ -1518,14 +1615,14 @@ void main(
         writeln( "    --exclude FOLDER_FILTER/" );
         writeln( "    --include file_filter" );
         writeln( "    --exclude file_filter" );
+        writeln( "    --compare smart" );
+        writeln( "    --sample 1M" );
+        writeln( "    --allowed 2" );
+        writeln( "    --verbose" );
         writeln( "    --print" );
         writeln( "    --confirm" );
         writeln( "    --create" );
-        writeln( "    --verbose" );
         writeln( "    --preview" );
-        writeln( "    --compare minimal" );
-        writeln( "    --sample 128K" );
-        writeln( "    --precision 1" );
         writeln( "Examples :" );
         writeln( "    resync --updated --changed --removed --added --emptied --exclude \".git/\" --exclude \"*/.git/\" --exclude \"*.tmp\" --print --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --updated --changed --removed --added --emptied --print --confirm --create SOURCE_FOLDER/ TARGET_FOLDER/" );
