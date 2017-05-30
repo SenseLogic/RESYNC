@@ -423,7 +423,6 @@ bool
     EmptiedOptionIsEnabled,
     MovedOptionIsEnabled,
     PreviewOptionIsEnabled,
-    PrintOptionIsEnabled,
     RemovedOptionIsEnabled,
     UpdatedOptionIsEnabled,
     VerboseOptionIsEnabled;
@@ -1422,13 +1421,16 @@ void SynchronizeFolders(
         FindAddedFiles();
     }
 
-    if ( PrintOptionIsEnabled )
+    if ( ConfirmOptionIsEnabled )
     {
         PrintChanges();
+        
+        if ( AskConfirmation() )
+        {
+            FixTargetFolder();
+        }
     }
-
-    if ( !ConfirmOptionIsEnabled
-         || AskConfirmation() )
+    else
     {
         FixTargetFolder();
     }
@@ -1447,6 +1449,7 @@ void main(
 
     argument_array = argument_array[ 1 .. $ ];
 
+    CreateOptionIsEnabled = false;
     AdjustedOptionIsEnabled = false;
     NegativeAdjustedTimeOffset = msecs( 1 );
     PositiveAdjustedTimeOffset = msecs( 1 );
@@ -1462,16 +1465,14 @@ void main(
     ExcludedFilePathArray = [];
     IncludedFileNameArray = [];
     ExcludedFileNameArray = [];
-    VerboseOptionIsEnabled = false;
-    PrintOptionIsEnabled = false;
-    ConfirmOptionIsEnabled = false;
-    CreateOptionIsEnabled = false;
-    PreviewOptionIsEnabled = false;
     MinimumSampleByteCount = 0;
     MediumSampleByteCount = "1M".GetByteCount();
     MaximumSampleByteCount = "all".GetByteCount();
     NegativeAllowedTimeOffset = msecs( -2 );
     PositiveAllowedTimeOffset = msecs( 2 );
+    VerboseOptionIsEnabled = false;
+    ConfirmOptionIsEnabled = false;
+    PreviewOptionIsEnabled = false;
 
     while ( argument_array.length >= 1
             && argument_array[ 0 ].startsWith( "--" ) )
@@ -1480,7 +1481,11 @@ void main(
 
         argument_array = argument_array[ 1 .. $ ];
 
-        if ( option == "--adjusted"
+        if ( option == "--create" )
+        {
+            CreateOptionIsEnabled = true;
+        }
+        else if ( option == "--adjusted"
                   && argument_array.length >= 1 )
         {
             AdjustedOptionIsEnabled = true;
@@ -1575,17 +1580,9 @@ void main(
         {
             VerboseOptionIsEnabled = true;
         }
-        else if ( option == "--print" )
-        {
-            PrintOptionIsEnabled = true;
-        }
         else if ( option == "--confirm" )
         {
             ConfirmOptionIsEnabled = true;
-        }
-        else if ( option == "--create" )
-        {
-            CreateOptionIsEnabled = true;
         }
         else if ( option == "--preview" )
         {
@@ -1611,6 +1608,7 @@ void main(
         writeln( "Usage :" );
         writeln( "    resync [options] SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "Options :" );
+        writeln( "    --create" );
         writeln( "    --adjusted 1" );
         writeln( "    --updated" );
         writeln( "    --changed" );
@@ -1627,14 +1625,12 @@ void main(
         writeln( "    --sample 0 1M all" );
         writeln( "    --allowed 2" );
         writeln( "    --verbose" );
-        writeln( "    --print" );
         writeln( "    --confirm" );
-        writeln( "    --create" );
         writeln( "    --preview" );
         writeln( "Examples :" );
-        writeln( "    resync --updated --changed --removed --added --emptied --print --confirm --create SOURCE_FOLDER/ TARGET_FOLDER/" );
-        writeln( "    resync --updated --changed --removed --added --emptied --compare sample --sample 128K 1M 1M --verbose --print --confirm --preview SOURCE_FOLDER/ TARGET_FOLDER/" );
-        writeln( "    resync --updated --changed --removed --added --emptied --exclude \".git/\" --exclude \"*/.git/\" --exclude \"*.tmp\" --print --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --create --updated --changed --removed --added --emptied --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --updated --changed --removed --added --emptied --compare sample --sample 128K 1M 1M --verbose --confirm --preview SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --updated --changed --removed --added --emptied --exclude \".git/\" --exclude \"*/.git/\" --exclude \"*.tmp\" --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
 
         Abort( "Invalid arguments : " ~ argument_array.to!string() );
     }

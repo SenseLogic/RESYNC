@@ -31,7 +31,8 @@ resync [options] SOURCE_FOLDER/ TARGET_FOLDER/
 ### Options
 
 ```
---adjusted 1 : adjusted modification time offset in milliseconds
+--create : create the target folder if it doesn't exist
+--adjusted 0 : minimum adjusted modification time offset in milliseconds
 --updated : detect the updated files
 --changed : detect the changed files
 --moved : detect the moved files
@@ -45,18 +46,16 @@ resync [options] SOURCE_FOLDER/ TARGET_FOLDER/
 --include file_filter : include these file names
 --exclude file_filter : exclude these file names
 --sample 0 1M all : minimum, medium and maximum sample size (B for bytes, K for kilobytes, M for megabytes, G for gigabytes)
---allowed 2 : allowed modification time offset in milliseconds
+--allowed 2 : maximum allowed modification time offset in milliseconds
 --verbose : show the processing messages
---print : print the changes
 --confirm : ask confirmation before applying the changes
---create : create the target folder if it doesn't exist
 --preview : preview the changes without applying them
 ``` 
 
 ### Examples
 
 ```bash
-resync --updated --changed --removed --added --emptied --print --confirm --create SOURCE_FOLDER/ TARGET_FOLDER/
+resync --updated --changed --removed --added --emptied --confirm --create SOURCE_FOLDER/ TARGET_FOLDER/
 ```
 
 Detects the updated/changed/removed/added files and the emptied folders, prints these changes and asks confirmation before applying them to the target folder.
@@ -64,13 +63,13 @@ Detects the updated/changed/removed/added files and the emptied folders, prints 
 Creates the target folder if it doesn't exist.
 
 ```bash
-resync --updated --changed --removed --added --emptied --exclude ".git/" --exclude "*/.git/" --exclude "*.tmp" --print --confirm SOURCE_FOLDER/ TARGET_FOLDER/
+resync --updated --changed --removed --added --emptied --exclude ".git/" --exclude "*/.git/" --exclude "*.tmp" --confirm SOURCE_FOLDER/ TARGET_FOLDER/
 ```
 
 Detects the updated/changed/removed/added files and the emptied folders, excluding the ".git/" subfolders and "\*.tmp" file names, prints these changes and asks confirmation before applying them to the target folder.
 
 ```bash
-resync --updated --changed --removed --added --emptied --sample 128K 1M 1M --verbose --print --confirm SOURCE_FOLDER/ TARGET_FOLDER/
+resync --updated --changed --removed --added --emptied --sample 128K 1M 1M --verbose --confirm SOURCE_FOLDER/ TARGET_FOLDER/
 ```
 
 Detects the updated/changed/removed/added files and the emptied folders, sampling up to one megabyte in each file, prints these changes and asks confirmation before applying them to the target folder.
@@ -82,7 +81,7 @@ resync --updated --removed --added --preview SOURCE_FOLDER/ TARGET_FOLDER/
 Detects the updated/removed/added files and previews these changes without applying them to the target folder.
 
 ```bash
-resync --adjusted 1 --allowed 2 --print --confirm SOURCE_FOLDER/ TARGET_FOLDER/
+resync --adjusted 1 --allowed 2 --confirm SOURCE_FOLDER/ TARGET_FOLDER/
 ```
 
 Detects the files with a slightly different modification time, prints these changes and asks confirmation before fixing the modification times in the target folder.
