@@ -48,19 +48,17 @@ resync [options] SOURCE_FOLDER/ TARGET_FOLDER/
 --sample 0 1M all : minimum, medium and maximum sample size (B for bytes, K for kilobytes, M for megabytes, G for gigabytes)
 --allowed 2 : maximum allowed modification time offset in milliseconds
 --verbose : show the processing messages
---confirm : ask confirmation before applying the changes
+--confirm : print the changes and ask confirmation before applying them
 --preview : preview the changes without applying them
 ``` 
 
 ### Examples
 
 ```bash
-resync --updated --changed --removed --added --emptied --confirm --create SOURCE_FOLDER/ TARGET_FOLDER/
+resync --create --updated --changed --removed --added --emptied --confirm SOURCE_FOLDER/ TARGET_FOLDER/
 ```
 
-Detects the updated/changed/removed/added files and the emptied folders, prints these changes and asks confirmation before applying them to the target folder.
-
-Creates the target folder if it doesn't exist.
+Creates the target folder if it doesn't exist, detects the updated/changed/removed/added files and the emptied folders, prints these changes and asks confirmation before applying them to the target folder.
 
 ```bash
 resync --updated --changed --removed --added --emptied --exclude ".git/" --exclude "*/.git/" --exclude "*.tmp" --confirm SOURCE_FOLDER/ TARGET_FOLDER/
