@@ -92,7 +92,7 @@ Detects the moved files and applies these changes to the target folder.
 
 ## Version
 
-0.1
+1.0
 
 ## Author
 
