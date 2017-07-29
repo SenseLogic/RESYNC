@@ -558,8 +558,7 @@ string GetFolderPath(
         folder_path ~= '/';
     }
 
-    if ( folder_path == "./"
-         && !file_path.startsWith( '.' ) )
+    if ( folder_path == "./" )
     {
         folder_path = "";
     }
