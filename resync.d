@@ -275,8 +275,8 @@ class SUB_FOLDER
         Path,
         RelativePath;
     bool
-        ItIsEmpty,
-        ItIsEmptied;
+        IsEmpty,
+        IsEmptied;
 }
 
 // ~~
@@ -333,7 +333,7 @@ class FOLDER
         sub_folder = new SUB_FOLDER;
         sub_folder.Path = folder_path;
         sub_folder.RelativePath = relative_folder_path;
-        sub_folder.ItIsEmpty = true;
+        sub_folder.IsEmpty = true;
 
         SubFolderArray ~= sub_folder;
         SubFolderMap[ relative_folder_path ] = sub_folder;
@@ -344,7 +344,7 @@ class FOLDER
             {
                 foreach ( folder_entry; dirEntries( folder_path, SpanMode.shallow ) )
                 {
-                    sub_folder.ItIsEmpty = false;
+                    sub_folder.IsEmpty = false;
 
                     if ( folder_entry.isFile()
                          && !folder_entry.isSymlink() )
@@ -954,7 +954,7 @@ void FindRemovedFiles(
     {
         if ( target_file.Type == FILE_TYPE.None )
         {
-            TargetFolder.SubFolderMap[ target_file.RelativeFolderPath ].ItIsEmptied = true;
+            TargetFolder.SubFolderMap[ target_file.RelativeFolderPath ].IsEmptied = true;
 
             target_file.Type = FILE_TYPE.Removed;
 
@@ -1066,8 +1066,8 @@ void PrintRemovedFolders(
 
     foreach_reverse ( target_sub_folder; TargetFolder.SubFolderArray )
     {
-        if ( target_sub_folder.ItIsEmpty
-             || target_sub_folder.ItIsEmptied )
+        if ( target_sub_folder.IsEmpty
+             || target_sub_folder.IsEmptied )
         {
             relative_folder_path = target_sub_folder.RelativePath;
 
@@ -1096,7 +1096,7 @@ void PrintAddedFolders(
 
     foreach ( source_sub_folder; SourceFolder.SubFolderArray )
     {
-        if ( source_sub_folder.ItIsEmpty )
+        if ( source_sub_folder.IsEmpty )
         {
             relative_folder_path = source_sub_folder.RelativePath;
 
@@ -1253,8 +1253,8 @@ void RemoveFolders(
 
     foreach_reverse ( target_sub_folder; TargetFolder.SubFolderArray )
     {
-        if ( target_sub_folder.ItIsEmpty
-             || target_sub_folder.ItIsEmptied )
+        if ( target_sub_folder.IsEmpty
+             || target_sub_folder.IsEmptied )
         {
             relative_folder_path = target_sub_folder.RelativePath;
 
@@ -1277,7 +1277,7 @@ void RemoveFolders(
 
                         if ( relative_folder_path != "" )
                         {
-                            TargetFolder.SubFolderMap[ relative_folder_path ].ItIsEmptied = true;
+                            TargetFolder.SubFolderMap[ relative_folder_path ].IsEmptied = true;
                         }
                     }
                     else
@@ -1307,7 +1307,7 @@ void AddFolders(
 
     foreach ( source_sub_folder; SourceFolder.SubFolderArray )
     {
-        if ( source_sub_folder.ItIsEmpty )
+        if ( source_sub_folder.IsEmpty )
         {
             relative_folder_path = source_sub_folder.RelativePath;
 
