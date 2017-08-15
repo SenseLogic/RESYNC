@@ -68,9 +68,9 @@ class FILE
     long
         ByteCount;
     bool
-        ItHasMinimumSampleHash,
-        ItHasMediumSampleHash,
-        ItHasMaximumSampleHash;
+        HasMinimumSampleHash,
+        HasMediumSampleHash,
+        HasMaximumSampleHash;
     HASH
         MinimumSampleHash,
         MediumSampleHash,
@@ -138,7 +138,7 @@ class FILE
     HASH GetMinimumSampleHash(
         )
     {
-        if ( !ItHasMinimumSampleHash )
+        if ( !HasMinimumSampleHash )
         {
             if ( VerboseOptionIsEnabled )
             {
@@ -147,7 +147,7 @@ class FILE
 
             MinimumSampleHash = GetSampleHash( MinimumSampleByteCount );
 
-            ItHasMinimumSampleHash = true;
+            HasMinimumSampleHash = true;
         }
 
         return MinimumSampleHash;
@@ -158,7 +158,7 @@ class FILE
     HASH GetMediumSampleHash(
         )
     {
-        if ( !ItHasMediumSampleHash )
+        if ( !HasMediumSampleHash )
         {
             if ( VerboseOptionIsEnabled )
             {
@@ -167,7 +167,7 @@ class FILE
 
             MediumSampleHash = GetSampleHash( MediumSampleByteCount );
 
-            ItHasMediumSampleHash = true;
+            HasMediumSampleHash = true;
         }
 
         return MediumSampleHash;
@@ -178,7 +178,7 @@ class FILE
     HASH GetMaximumSampleHash(
         )
     {
-        if ( !ItHasMaximumSampleHash )
+        if ( !HasMaximumSampleHash )
         {
             if ( VerboseOptionIsEnabled )
             {
@@ -187,7 +187,7 @@ class FILE
 
             MaximumSampleHash = GetSampleHash( MaximumSampleByteCount );
 
-            ItHasMaximumSampleHash = true;
+            HasMaximumSampleHash = true;
         }
 
         return MaximumSampleHash;
