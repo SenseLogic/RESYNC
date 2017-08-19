@@ -1,3 +1,5 @@
+![](https://github.com/senselogic/RESYNC/blob/master/LOGO/resync.png)
+
 # Resync
 
 Local folder synchronizer.
