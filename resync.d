@@ -494,13 +494,13 @@ void Abort(
 long GetByteCount(
     string argument
     )
-{    
+{
     long
         byte_count,
         unit_byte_count;
-        
+
     argument = argument.toLower();
-    
+
     if ( argument == "all" )
     {
         byte_count = long.max;
@@ -510,35 +510,35 @@ long GetByteCount(
         if ( argument.endsWith( 'b' ) )
         {
             unit_byte_count = 1;
-            
+
             argument = argument[ 0 .. $ - 1 ];
         }
         if ( argument.endsWith( 'k' ) )
         {
             unit_byte_count = 1024;
-            
+
             argument = argument[ 0 .. $ - 1 ];
         }
         else if ( argument.endsWith( 'm' ) )
         {
             unit_byte_count = 1024 * 1024;
-            
+
             argument = argument[ 0 .. $ - 1 ];
         }
         else if ( argument.endsWith( 'g' ) )
         {
             unit_byte_count = 1024 * 1024 * 1024;
-            
+
             argument = argument[ 0 .. $ - 1 ];
         }
         else
         {
             unit_byte_count = 1;
         }
-        
+
         byte_count = argument.to!long() * unit_byte_count;
     }
-    
+
     return byte_count;
 }
 
@@ -746,7 +746,7 @@ void AdjustFile(
     string source_file_path,
     string target_file_path
     )
-{    
+{
     uint
         attributes;
     SysTime
@@ -854,7 +854,7 @@ void FindChangedFiles(
                 {
                     source_file.Type = FILE_TYPE.Identical;
                     target_file.Type = FILE_TYPE.Identical;
-                    
+
                     if ( AdjustedOptionIsEnabled
                          && ( modification_time_offset <= NegativeAdjustedTimeOffset
                               || modification_time_offset >= PositiveAdjustedTimeOffset ) )
@@ -1347,7 +1347,7 @@ void FixTargetFolder(
     {
         AdjustFiles();
     }
-    
+
     if ( UpdatedOptionIsEnabled )
     {
         UpdateFiles();
@@ -1423,7 +1423,7 @@ void SynchronizeFolders(
     if ( ConfirmOptionIsEnabled )
     {
         PrintChanges();
-        
+
         if ( AskConfirmation() )
         {
             FixTargetFolder();
@@ -1488,7 +1488,7 @@ void main(
                   && argument_array.length >= 1 )
         {
             AdjustedOptionIsEnabled = true;
-            
+
             millisecond_count = argument_array[ 0 ].to!long();
 
             NegativeAdjustedTimeOffset = msecs( -millisecond_count );
