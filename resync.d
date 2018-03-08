@@ -1077,7 +1077,7 @@ void PrintRemovedFolders(
 
                 if ( source_sub_folder is null )
                 {
-                    writeln( "Removed folder : " ~ relative_folder_path );
+                    writeln( "Removed folder : ", relative_folder_path );
                 }
             }
         }
@@ -1104,7 +1104,7 @@ void PrintAddedFolders(
 
             if ( target_sub_folder is null )
             {
-                writeln( "Added folder : " ~ relative_folder_path );
+                writeln( "Added folder : ", relative_folder_path );
             }
         }
     }
