@@ -330,7 +330,7 @@ class FOLDER
 
         relative_folder_path = GetRelativePath( folder_path );
 
-        sub_folder = new SUB_FOLDER;
+        sub_folder = new SUB_FOLDER();
         sub_folder.Path = folder_path;
         sub_folder.RelativePath = relative_folder_path;
         sub_folder.IsEmpty = true;
@@ -355,7 +355,7 @@ class FOLDER
                         if ( IsIncludedPath( relative_file_path, IncludedFilePathArray, ExcludedFilePathArray )
                              && IsIncludedPath( file_name, IncludedFileNameArray, ExcludedFileNameArray ) )
                         {
-                            file = new FILE;
+                            file = new FILE();
                             file.Name = file_name;
                             file.Path = folder_entry;
                             file.RelativePath = relative_file_path;
@@ -1375,8 +1375,8 @@ void FixTargetFolder(
 void SynchronizeFolders(
     )
 {
-    SourceFolder = new FOLDER;
-    TargetFolder = new FOLDER;
+    SourceFolder = new FOLDER();
+    TargetFolder = new FOLDER();
 
     SourceFolder.Path = SourceFolderPath;
     TargetFolder.Path = TargetFolderPath;
