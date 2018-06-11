@@ -18,8 +18,6 @@
     along with Resync.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-// == LOCAL
-
 // -- IMPORTS
 
 import core.stdc.stdlib : exit;
@@ -31,8 +29,6 @@ import std.file : copy, dirEntries, exists, getAttributes, getTimes, mkdir, mkdi
 import std.path : baseName, dirName, globMatch;
 import std.stdio : readln, writeln, File;
 import std.string : endsWith, indexOf, replace, startsWith, toLower, toUpper;
-
-// == GLOBAL
 
 // -- TYPES
 
