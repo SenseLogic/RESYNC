@@ -1611,8 +1611,8 @@ void main(
     }
 
     if ( argument_array.length == 2
-         && argument_array[ 0 ].endsWith( '/' )
-         && argument_array[ 1 ].endsWith( '/' ) )
+         && argument_array[ 0 ].GetLogicalPath().endsWith( '/' )
+         && argument_array[ 1 ].GetLogicalPath().endsWith( '/' ) )
     {
         SourceFolderPath = argument_array[ 0 ].GetLogicalPath();
         TargetFolderPath = argument_array[ 1 ].GetLogicalPath();
