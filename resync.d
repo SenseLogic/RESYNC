@@ -540,6 +540,15 @@ long GetByteCount(
 
 // ~~
 
+string GetLogicalPath(
+    string path
+    )
+{
+    return path.replace( "\\", "/" );
+}
+
+// ~~
+
 string GetFolderPath(
     string file_path
     )
@@ -799,7 +808,14 @@ void CopyFile(
 
             if ( target_file_path.exists() )
             {
-                target_file_path.setAttributes( 511 );
+                version( Windows )
+                {
+                    target_file_path.setAttributes( attributes & ~1 );
+                }
+                else
+                {
+                    target_file_path.setAttributes( 511 );
+                }
             }
 
             source_file_path.copy( target_file_path );
@@ -1440,6 +1456,7 @@ void main(
     long
         millisecond_count;
     string
+        logical_path,
         option;
 
     argument_array = argument_array[ 1 .. $ ];
@@ -1519,17 +1536,19 @@ void main(
         else if ( option == "--include"
                   && argument_array.length >= 1 )
         {
-            if ( argument_array[ 0 ].endsWith( '/' ) )
+            logical_path = argument_array[ 0 ].GetLogicalPath();
+
+            if ( logical_path.endsWith( '/' ) )
             {
-                IncludedFolderPathArray ~= argument_array[ 0 ] ~ '*';
+                IncludedFolderPathArray ~= logical_path ~ '*';
             }
-            else if ( argument_array[ 0 ].indexOf( '/' ) >= 0 )
+            else if ( logical_path.indexOf( '/' ) >= 0 )
             {
-                IncludedFilePathArray ~= argument_array[ 0 ];
+                IncludedFilePathArray ~= logical_path;
             }
             else
             {
-                IncludedFileNameArray ~= argument_array[ 0 ];
+                IncludedFileNameArray ~= logical_path;
             }
 
             argument_array = argument_array[ 1 .. $ ];
@@ -1537,17 +1556,19 @@ void main(
         else if ( option == "--exclude"
                   && argument_array.length >= 1 )
         {
-            if ( argument_array[ 0 ].endsWith( '/' ) )
+            logical_path = argument_array[ 0 ].GetLogicalPath();
+
+            if ( logical_path.endsWith( '/' ) )
             {
-                ExcludedFolderPathArray ~= argument_array[ 0 ] ~ '*';
+                ExcludedFolderPathArray ~= logical_path ~ '*';
             }
-            else if ( argument_array[ 0 ].indexOf( '/' ) >= 0 )
+            else if ( logical_path.indexOf( '/' ) >= 0 )
             {
-                ExcludedFilePathArray ~= argument_array[ 0 ];
+                ExcludedFilePathArray ~= logical_path;
             }
             else
             {
-                ExcludedFileNameArray ~= argument_array[ 0 ];
+                ExcludedFileNameArray ~= logical_path;
             }
 
             argument_array = argument_array[ 1 .. $ ];
@@ -1593,8 +1614,8 @@ void main(
          && argument_array[ 0 ].endsWith( '/' )
          && argument_array[ 1 ].endsWith( '/' ) )
     {
-        SourceFolderPath = argument_array[ 0 ];
-        TargetFolderPath = argument_array[ 1 ];
+        SourceFolderPath = argument_array[ 0 ].GetLogicalPath();
+        TargetFolderPath = argument_array[ 1 ].GetLogicalPath();
 
         SynchronizeFolders();
     }
