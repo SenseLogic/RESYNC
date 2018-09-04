@@ -25,7 +25,7 @@ import core.time : msecs, Duration;
 import std.conv : to;
 import std.datetime : SysTime;
 import std.digest.md : MD5;
-import std.file : copy, dirEntries, exists, getAttributes, getTimes, mkdir, mkdirRecurse, readText, remove, rename, rmdir, setAttributes, setTimes, write, FileException, SpanMode;
+import std.file : copy, dirEntries, exists, getAttributes, getTimes, mkdir, mkdirRecurse, readText, remove, rename, rmdir, setAttributes, setTimes, write, FileException, PreserveAttributes, SpanMode;
 import std.path : baseName, dirName, globMatch;
 import std.stdio : readln, writeln, File;
 import std.string : endsWith, indexOf, replace, startsWith, toLower, toUpper;
@@ -803,12 +803,18 @@ void CopyFile(
                 target_folder_path.AddFolder();
             }
 
+            version ( Windows )
+            {
+                source_file_path = source_file_path.replace( "/", "\\" );
+                target_file_path = target_file_path.replace( "/", "\\" );
+            }
+
             attributes = source_file_path.getAttributes();
             source_file_path.getTimes( access_time, modification_time );
 
             if ( target_file_path.exists() )
             {
-                version( Windows )
+                version ( Windows )
                 {
                     target_file_path.setAttributes( attributes & ~1 );
                 }
@@ -818,7 +824,7 @@ void CopyFile(
                 }
             }
 
-            source_file_path.copy( target_file_path );
+            source_file_path.copy( target_file_path, PreserveAttributes.no );
 
             target_file_path.setAttributes( attributes );
             target_file_path.setTimes( access_time, modification_time );
