@@ -803,31 +803,32 @@ void CopyFile(
                 target_folder_path.AddFolder();
             }
 
-            version ( Windows )
-            {
-                source_file_path = source_file_path.replace( "/", "\\" );
-                target_file_path = target_file_path.replace( "/", "\\" );
-            }
-
             attributes = source_file_path.getAttributes();
             source_file_path.getTimes( access_time, modification_time );
 
-            if ( target_file_path.exists() )
+            version ( Windows )
             {
-                version ( Windows )
+                if ( target_file_path.exists() )
                 {
                     target_file_path.setAttributes( attributes & ~1 );
                 }
-                else
+
+                source_file_path.copy( target_file_path, PreserveAttributes.no );
+                target_file_path.setAttributes( attributes & ~1 );
+                target_file_path.setTimes( access_time, modification_time );
+                target_file_path.setAttributes( attributes );
+            }
+            else
+            {
+                if ( target_file_path.exists() )
                 {
                     target_file_path.setAttributes( 511 );
                 }
+
+                source_file_path.copy( target_file_path, PreserveAttributes.no );
+                target_file_path.setAttributes( attributes );
+                target_file_path.setTimes( access_time, modification_time );
             }
-
-            source_file_path.copy( target_file_path, PreserveAttributes.no );
-
-            target_file_path.setAttributes( attributes );
-            target_file_path.setTimes( access_time, modification_time );
         }
         catch ( FileException file_exception )
         {
