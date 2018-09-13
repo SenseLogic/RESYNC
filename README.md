@@ -49,10 +49,11 @@ resync [options] SOURCE_FOLDER/ TARGET_FOLDER/
 --exclude file_filter : exclude these file names
 --sample 0 1M all : minimum, medium and maximum sample size (B for bytes, K for kilobytes, M for megabytes, G for gigabytes)
 --allowed 2 : maximum allowed modification time offset in milliseconds
+--abort : abort on file copy errors
 --verbose : show the processing messages
 --confirm : print the changes and ask confirmation before applying them
 --preview : preview the changes without applying them
-``` 
+```
 
 ### Examples
 

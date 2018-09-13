@@ -28,12 +28,11 @@ import std.digest.md : MD5;
 import std.file : copy, dirEntries, exists, getAttributes, getTimes, mkdir, mkdirRecurse, readText, remove, rename, rmdir, setAttributes, setTimes, write, FileException, PreserveAttributes, SpanMode;
 import std.path : baseName, dirName, globMatch;
 import std.stdio : readln, writeln, File;
-import std.string : endsWith, indexOf, replace, startsWith, toLower, toUpper;
+import std.string : endsWith, indexOf, join, replace, startsWith, toLower, toUpper;
 
 // -- TYPES
 
-alias HASH
-    = ubyte[ 16 ];
+alias HASH = ubyte[ 16 ];
 
 // ~~
 
@@ -411,6 +410,7 @@ class FOLDER
 // -- VARIABLES
 
 bool
+    AbortOptionIsEnabled,
     AddedOptionIsEnabled,
     AdjustedOptionIsEnabled,
     ConfirmOptionIsEnabled,
@@ -430,16 +430,17 @@ string
     SourceFolderPath,
     TargetFolderPath;
 string[]
-    IncludedFolderPathArray,
+    ErrorMessageArray,
     ExcludedFolderPathArray,
-    IncludedFilePathArray,
     ExcludedFilePathArray,
-    IncludedFileNameArray,
-    ExcludedFileNameArray;
+    ExcludedFileNameArray,
+    IncludedFolderPathArray,
+    IncludedFilePathArray,
+    IncludedFileNameArray;
 Duration
     NegativeAdjustedTimeOffset,
-    PositiveAdjustedTimeOffset,
     NegativeAllowedTimeOffset,
+    PositiveAdjustedTimeOffset,
     PositiveAllowedTimeOffset;
 FILE[]
     AddedFileArray,
@@ -459,6 +460,8 @@ void PrintError(
     )
 {
     writeln( "*** ERROR : ", message );
+
+    ErrorMessageArray ~= message;
 }
 
 // ~~
@@ -476,13 +479,18 @@ void Abort(
 
 void Abort(
     string message,
-    FileException file_exception
+    FileException file_exception,
+    bool it_must_exit = false
     )
 {
     PrintError( message );
     PrintError( file_exception.msg );
 
-    exit( -1 );
+    if ( it_must_exit
+         || AbortOptionIsEnabled )
+    {
+        exit( -1 );
+    }
 }
 
 // ~~
@@ -640,7 +648,7 @@ bool IsEmptyFolder(
     }
     catch ( FileException file_exception )
     {
-        Abort( "Can't read folder : " ~ folder_path, file_exception );
+        Abort( "Can't read folder : " ~ folder_path, file_exception, true );
     }
 
     return it_is_empty_folder;
@@ -665,7 +673,7 @@ void AddFolder(
         }
         catch ( FileException file_exception )
         {
-            Abort( "Can't add folder : " ~ folder_path, file_exception );
+            Abort( "Can't add folder : " ~ folder_path, file_exception, true );
         }
     }
 }
@@ -684,7 +692,7 @@ void RemoveFolder(
         }
         catch ( FileException file_exception )
         {
-            Abort( "Can't create folder : " ~ folder_path, file_exception );
+            Abort( "Can't create folder : " ~ folder_path, file_exception, true );
         }
     }
 }
@@ -1394,63 +1402,75 @@ void FixTargetFolder(
 void SynchronizeFolders(
     )
 {
-    SourceFolder = new FOLDER();
-    TargetFolder = new FOLDER();
-
-    SourceFolder.Path = SourceFolderPath;
-    TargetFolder.Path = TargetFolderPath;
-
-    SourceFolder.Read();
-
-    if ( TargetFolder.Path.exists() )
+    if ( SourceFolderPath != TargetFolderPath )
     {
-        TargetFolder.Read();
-    }
-    else if ( CreateOptionIsEnabled )
-    {
-        TargetFolder.Add();
-    }
-    else
-    {
-        Abort( "Invalid folder : " ~ TargetFolder.Path );
-    }
+        SourceFolder = new FOLDER();
+        TargetFolder = new FOLDER();
 
-    AdjustedFileArray = [];
-    UpdatedFileArray = [];
-    ChangedFileArray = [];
-    MovedFileArray = [];
-    RemovedFileArray = [];
-    AddedFileArray = [];
+        SourceFolder.Path = SourceFolderPath;
+        TargetFolder.Path = TargetFolderPath;
 
-    FindChangedFiles();
+        SourceFolder.Read();
 
-    if ( MovedOptionIsEnabled )
-    {
-        FindMovedFiles();
-    }
+        if ( TargetFolder.Path.exists() )
+        {
+            TargetFolder.Read();
+        }
+        else if ( CreateOptionIsEnabled )
+        {
+            TargetFolder.Add();
+        }
+        else
+        {
+            Abort( "Invalid folder target : " ~ TargetFolder.Path );
+        }
 
-    if ( RemovedOptionIsEnabled )
-    {
-        FindRemovedFiles();
-    }
+        AdjustedFileArray = [];
+        UpdatedFileArray = [];
+        ChangedFileArray = [];
+        MovedFileArray = [];
+        RemovedFileArray = [];
+        AddedFileArray = [];
 
-    if ( AddedOptionIsEnabled )
-    {
-        FindAddedFiles();
-    }
+        FindChangedFiles();
 
-    if ( ConfirmOptionIsEnabled )
-    {
-        PrintChanges();
+        if ( MovedOptionIsEnabled )
+        {
+            FindMovedFiles();
+        }
 
-        if ( AskConfirmation() )
+        if ( RemovedOptionIsEnabled )
+        {
+            FindRemovedFiles();
+        }
+
+        if ( AddedOptionIsEnabled )
+        {
+            FindAddedFiles();
+        }
+
+        if ( ConfirmOptionIsEnabled )
+        {
+            PrintChanges();
+
+            if ( AskConfirmation() )
+            {
+                FixTargetFolder();
+            }
+        }
+        else
         {
             FixTargetFolder();
         }
     }
     else
     {
-        FixTargetFolder();
+        Abort( "Invalid target folder : " ~ TargetFolder.Path );
+    }
+
+    if ( ErrorMessageArray.length > 0 )
+    {
+        writeln( "ERRORS :\n", ErrorMessageArray.join( '\n' ) );
     }
 }
 
@@ -1468,6 +1488,7 @@ void main(
 
     argument_array = argument_array[ 1 .. $ ];
 
+    ErrorMessageArray = [];
     CreateOptionIsEnabled = false;
     AdjustedOptionIsEnabled = false;
     NegativeAdjustedTimeOffset = msecs( 1 );
@@ -1489,6 +1510,7 @@ void main(
     MaximumSampleByteCount = "all".GetByteCount();
     NegativeAllowedTimeOffset = msecs( -2 );
     PositiveAllowedTimeOffset = msecs( 2 );
+    AbortOptionIsEnabled = false;
     VerboseOptionIsEnabled = false;
     ConfirmOptionIsEnabled = false;
     PreviewOptionIsEnabled = false;
@@ -1599,6 +1621,10 @@ void main(
 
             argument_array = argument_array[ 1 .. $ ];
         }
+        else if ( option == "--abort" )
+        {
+            AbortOptionIsEnabled = true;
+        }
         else if ( option == "--verbose" )
         {
             VerboseOptionIsEnabled = true;
@@ -1647,6 +1673,7 @@ void main(
         writeln( "    --exclude file_filter" );
         writeln( "    --sample 0 1M all" );
         writeln( "    --allowed 2" );
+        writeln( "    --abort" );
         writeln( "    --verbose" );
         writeln( "    --confirm" );
         writeln( "    --preview" );
