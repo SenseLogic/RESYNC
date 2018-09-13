@@ -1470,7 +1470,7 @@ void SynchronizeFolders(
 
     if ( ErrorMessageArray.length > 0 )
     {
-        writeln( "ERRORS :\n", ErrorMessageArray.join( '\n' ) );
+        writeln( "*** ERRORS :\n", ErrorMessageArray.join( '\n' ) );
     }
 }
 
