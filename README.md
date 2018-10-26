@@ -64,6 +64,12 @@ resync --create --updated --changed --removed --added --emptied --confirm SOURCE
 Creates the target folder if it doesn't exist, detects the updated/changed/removed/added files and the emptied folders, prints these changes and asks confirmation before applying them to the target folder.
 
 ```bash
+resync --updated --changed --removed --added --moved --emptied --sample 0 1M 10M --verbose --confirm SOURCE_FOLDER/ TARGET_FOLDER/
+```
+
+Detects the updated/changed/removed/added/moved files and the emptied folders, comparing the first 10MB of the moved files, then prints these changes and asks confirmation before applying them to the target folder.
+
+```bash
 resync --updated --changed --removed --added --emptied --exclude ".git/" --exclude "*/.git/" --exclude "*.tmp" --confirm SOURCE_FOLDER/ TARGET_FOLDER/
 ```
 
