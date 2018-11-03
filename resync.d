@@ -921,46 +921,28 @@ void FindMovedFiles(
         writeln( "Finding moved files" );
     }
 
-    foreach ( target_file; TargetFolder.FileArray )
+    foreach ( pass_index; 0 .. 2 )
     {
-        if ( target_file.Type == FILE_TYPE.None )
+        foreach ( target_file; TargetFolder.FileArray )
         {
-            foreach ( source_file; SourceFolder.FileArray )
+            if ( target_file.Type == FILE_TYPE.None )
             {
-                if ( source_file.Type == FILE_TYPE.None
-                     && source_file.Name == target_file.Name
-                     && source_file.ByteCount == target_file.ByteCount
-                     && source_file.HasIdenticalContent( target_file ) )
+                foreach ( source_file; SourceFolder.FileArray )
                 {
-                    target_file.TargetFilePath = TargetFolder.Path ~ source_file.RelativePath;
-                    target_file.TargetRelativeFilePath = source_file.RelativePath;
+                    if ( target_file.Type == FILE_TYPE.None
+                         && source_file.Type == FILE_TYPE.None
+                         && ( source_file.Name == target_file.Name || pass_index == 1 )
+                         && source_file.ByteCount == target_file.ByteCount
+                         && source_file.HasIdenticalContent( target_file ) )
+                    {
+                        target_file.TargetFilePath = TargetFolder.Path ~ source_file.RelativePath;
+                        target_file.TargetRelativeFilePath = source_file.RelativePath;
 
-                    source_file.Type = FILE_TYPE.Moved;
-                    target_file.Type = FILE_TYPE.Moved;
+                        source_file.Type = FILE_TYPE.Moved;
+                        target_file.Type = FILE_TYPE.Moved;
 
-                    MovedFileArray ~= target_file;
-                }
-            }
-        }
-    }
-
-    foreach ( target_file; TargetFolder.FileArray )
-    {
-        if ( target_file.Type == FILE_TYPE.None )
-        {
-            foreach ( source_file; SourceFolder.FileArray )
-            {
-                if ( source_file.Type == FILE_TYPE.None
-                     && source_file.ByteCount == target_file.ByteCount
-                     && source_file.HasIdenticalContent( target_file ) )
-                {
-                    target_file.TargetFilePath = TargetFolder.Path ~ source_file.RelativePath;
-                    target_file.TargetRelativeFilePath = source_file.RelativePath;
-
-                    source_file.Type = FILE_TYPE.Moved;
-                    target_file.Type = FILE_TYPE.Moved;
-
-                    MovedFileArray ~= target_file;
+                        MovedFileArray ~= target_file;
+                    }
                 }
             }
         }
