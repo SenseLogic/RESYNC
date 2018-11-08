@@ -387,9 +387,9 @@ class FOLDER
     {
         writeln( "Reading folder : ", Path );
 
-        FileArray = [];
+        FileArray = null;
         FileMap = null;
-        SubFolderArray = [];
+        SubFolderArray = null;
         SubFolderMap = null;
 
         Read( Path );
@@ -1407,12 +1407,12 @@ void SynchronizeFolders(
             Abort( "Invalid folder target : " ~ TargetFolder.Path );
         }
 
-        AdjustedFileArray = [];
-        UpdatedFileArray = [];
-        ChangedFileArray = [];
-        MovedFileArray = [];
-        RemovedFileArray = [];
-        AddedFileArray = [];
+        AdjustedFileArray = null;
+        UpdatedFileArray = null;
+        ChangedFileArray = null;
+        MovedFileArray = null;
+        RemovedFileArray = null;
+        AddedFileArray = null;
 
         FindChangedFiles();
 
@@ -1470,7 +1470,7 @@ void main(
 
     argument_array = argument_array[ 1 .. $ ];
 
-    ErrorMessageArray = [];
+    ErrorMessageArray = null;
     CreateOptionIsEnabled = false;
     AdjustedOptionIsEnabled = false;
     NegativeAdjustedTimeOffset = msecs( 1 );
@@ -1481,12 +1481,12 @@ void main(
     RemovedOptionIsEnabled = false;
     AddedOptionIsEnabled = false;
     EmptiedOptionIsEnabled = false;
-    IncludedFolderPathArray = [];
-    ExcludedFolderPathArray = [];
-    IncludedFilePathArray = [];
-    ExcludedFilePathArray = [];
-    IncludedFileNameArray = [];
-    ExcludedFileNameArray = [];
+    IncludedFolderPathArray = null;
+    ExcludedFolderPathArray = null;
+    IncludedFilePathArray = null;
+    ExcludedFilePathArray = null;
+    IncludedFileNameArray = null;
+    ExcludedFileNameArray = null;
     MinimumSampleByteCount = 0;
     MediumSampleByteCount = "1M".GetByteCount();
     MaximumSampleByteCount = "all".GetByteCount();
