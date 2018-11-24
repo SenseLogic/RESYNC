@@ -725,6 +725,8 @@ void MoveFile(
 {
     string
         target_folder_path;
+    uint
+        attributes;
     SysTime
         access_time,
         modification_time;
@@ -742,8 +744,12 @@ void MoveFile(
                 target_folder_path.AddFolder();
             }
 
+            attributes = source_file_path.getAttributes();
             source_file_path.getTimes( access_time, modification_time );
+
             source_file_path.rename( target_file_path );
+
+            target_file_path.setAttributes( attributes );
             target_file_path.setTimes( access_time, modification_time );
         }
         catch ( FileException file_exception )
@@ -822,6 +828,7 @@ void CopyFile(
                 }
 
                 source_file_path.copy( target_file_path, PreserveAttributes.no );
+
                 target_file_path.setAttributes( attributes & ~1 );
                 target_file_path.setTimes( access_time, modification_time );
                 target_file_path.setAttributes( attributes );
@@ -834,6 +841,7 @@ void CopyFile(
                 }
 
                 source_file_path.copy( target_file_path, PreserveAttributes.no );
+
                 target_file_path.setAttributes( attributes );
                 target_file_path.setTimes( access_time, modification_time );
             }
