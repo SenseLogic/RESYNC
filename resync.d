@@ -71,6 +71,7 @@ class FILE
         MediumSampleHash,
         MaximumSampleHash;
     string
+        SourceFilePath,
         TargetFilePath,
         TargetRelativeFilePath;
 
@@ -220,7 +221,7 @@ class FILE
     void Move(
         )
     {
-        Path.MoveFile( TargetFilePath );
+        Path.MoveFile( TargetFilePath, SourceFilePath );
     }
 
     // ~~
@@ -438,10 +439,10 @@ string[]
     IncludedFilePathArray,
     IncludedFileNameArray;
 Duration
-    NegativeAdjustedTimeOffset,
-    NegativeAllowedTimeOffset,
-    PositiveAdjustedTimeOffset,
-    PositiveAllowedTimeOffset;
+    NegativeAdjustedOffsetDuration,
+    NegativeAllowedOffsetDuration,
+    PositiveAdjustedOffsetDuration,
+    PositiveAllowedOffsetDuration;
 FILE[]
     AddedFileArray,
     AdjustedFileArray,
@@ -720,7 +721,8 @@ void RemoveFile(
 
 void MoveFile(
     string source_file_path,
-    string target_file_path
+    string target_file_path,
+    string reference_file_path
     )
 {
     string
@@ -744,8 +746,8 @@ void MoveFile(
                 target_folder_path.AddFolder();
             }
 
-            attributes = source_file_path.getAttributes();
-            source_file_path.getTimes( access_time, modification_time );
+            attributes = reference_file_path.getAttributes();
+            reference_file_path.getTimes( access_time, modification_time );
 
             source_file_path.rename( target_file_path );
 
@@ -858,10 +860,10 @@ void CopyFile(
 void FindChangedFiles(
     )
 {
+    Duration
+        modification_time_offset_duration;
     FILE *
         source_file;
-    Duration
-        modification_time_offset;
 
     if ( VerboseOptionIsEnabled )
     {
@@ -879,11 +881,11 @@ void FindChangedFiles(
                 source_file.TargetFilePath = target_file.Path;
                 source_file.TargetRelativeFilePath = target_file.RelativePath;
 
-                modification_time_offset = source_file.ModificationTime - target_file.ModificationTime;
+                modification_time_offset_duration = source_file.ModificationTime - target_file.ModificationTime;
 
-                if ( modification_time_offset >= NegativeAllowedTimeOffset
-                     && modification_time_offset <= PositiveAllowedTimeOffset
-                     && source_file.ByteCount == target_file.ByteCount
+                if ( source_file.ByteCount == target_file.ByteCount
+                     && modification_time_offset_duration >= NegativeAllowedOffsetDuration
+                     && modification_time_offset_duration <= PositiveAllowedOffsetDuration
                      && ( MinimumSampleByteCount == 0
                           || source_file.HasIdenticalContent( target_file ) ) )
                 {
@@ -891,8 +893,8 @@ void FindChangedFiles(
                     target_file.Type = FILE_TYPE.Identical;
 
                     if ( AdjustedOptionIsEnabled
-                         && ( modification_time_offset <= NegativeAdjustedTimeOffset
-                              || modification_time_offset >= PositiveAdjustedTimeOffset ) )
+                         && ( modification_time_offset_duration <= NegativeAdjustedOffsetDuration
+                              || modification_time_offset_duration >= PositiveAdjustedOffsetDuration ) )
                     {
                         AdjustedFileArray ~= *source_file;
                     }
@@ -924,12 +926,19 @@ void FindChangedFiles(
 void FindMovedFiles(
     )
 {
+    bool
+        files_have_same_content,
+        files_have_same_modification_time,
+        files_have_same_name;
+    Duration
+        modification_time_offset_duration;
+
     if ( VerboseOptionIsEnabled )
     {
         writeln( "Finding moved files" );
     }
 
-    foreach ( pass_index; 0 .. 2 )
+    foreach ( pass_index; 0 .. 3 )
     {
         foreach ( target_file; TargetFolder.FileArray )
         {
@@ -939,17 +948,49 @@ void FindMovedFiles(
                 {
                     if ( target_file.Type == FILE_TYPE.None
                          && source_file.Type == FILE_TYPE.None
-                         && ( source_file.Name == target_file.Name || pass_index == 1 )
-                         && source_file.ByteCount == target_file.ByteCount
-                         && source_file.HasIdenticalContent( target_file ) )
+                         && source_file.ByteCount == target_file.ByteCount )
                     {
-                        target_file.TargetFilePath = TargetFolder.Path ~ source_file.RelativePath;
-                        target_file.TargetRelativeFilePath = source_file.RelativePath;
+                        if ( pass_index < 2 )
+                        {
+                            files_have_same_name = ( source_file.Name == target_file.Name );
+                        }
+                        else
+                        {
+                            files_have_same_name = true;
+                        }
 
-                        source_file.Type = FILE_TYPE.Moved;
-                        target_file.Type = FILE_TYPE.Moved;
+                        if ( pass_index == 0
+                             && MinimumSampleByteCount == 0 )
+                        {
+                            modification_time_offset_duration = source_file.ModificationTime - target_file.ModificationTime;
 
-                        MovedFileArray ~= target_file;
+                            files_have_same_modification_time
+                                = ( modification_time_offset_duration >= NegativeAllowedOffsetDuration
+                                    && modification_time_offset_duration <= PositiveAllowedOffsetDuration );
+
+                            files_have_same_content
+                                = ( files_have_same_name
+                                    && files_have_same_modification_time );
+                        }
+                        else
+                        {
+                            files_have_same_modification_time = true;
+                            files_have_same_content = source_file.HasIdenticalContent( target_file );
+                        }
+
+                        if ( files_have_same_name
+                             && files_have_same_modification_time
+                             && files_have_same_content )
+                        {
+                            target_file.SourceFilePath = source_file.Path;
+                            target_file.TargetFilePath = TargetFolder.Path ~ source_file.RelativePath;
+                            target_file.TargetRelativeFilePath = source_file.RelativePath;
+
+                            source_file.Type = FILE_TYPE.Moved;
+                            target_file.Type = FILE_TYPE.Moved;
+
+                            MovedFileArray ~= target_file;
+                        }
                     }
                 }
             }
@@ -1481,8 +1522,8 @@ void main(
     ErrorMessageArray = null;
     CreateOptionIsEnabled = false;
     AdjustedOptionIsEnabled = false;
-    NegativeAdjustedTimeOffset = msecs( 1 );
-    PositiveAdjustedTimeOffset = msecs( 1 );
+    NegativeAdjustedOffsetDuration = msecs( 1 );
+    PositiveAdjustedOffsetDuration = msecs( 1 );
     UpdatedOptionIsEnabled = false;
     ChangedOptionIsEnabled = false;
     MovedOptionIsEnabled = false;
@@ -1498,8 +1539,8 @@ void main(
     MinimumSampleByteCount = 0;
     MediumSampleByteCount = "1M".GetByteCount();
     MaximumSampleByteCount = "all".GetByteCount();
-    NegativeAllowedTimeOffset = msecs( -2 );
-    PositiveAllowedTimeOffset = msecs( 2 );
+    NegativeAllowedOffsetDuration = msecs( -2 );
+    PositiveAllowedOffsetDuration = msecs( 2 );
     AbortOptionIsEnabled = false;
     VerboseOptionIsEnabled = false;
     ConfirmOptionIsEnabled = false;
@@ -1523,8 +1564,8 @@ void main(
 
             millisecond_count = argument_array[ 0 ].to!long();
 
-            NegativeAdjustedTimeOffset = msecs( -millisecond_count );
-            PositiveAdjustedTimeOffset = msecs( millisecond_count );
+            NegativeAdjustedOffsetDuration = msecs( -millisecond_count );
+            PositiveAdjustedOffsetDuration = msecs( millisecond_count );
 
             argument_array = argument_array[ 1 .. $ ];
         }
@@ -1606,8 +1647,8 @@ void main(
         {
             millisecond_count = argument_array[ 0 ].to!long();
 
-            NegativeAllowedTimeOffset = msecs( -millisecond_count );
-            PositiveAllowedTimeOffset = msecs( millisecond_count );
+            NegativeAllowedOffsetDuration = msecs( -millisecond_count );
+            PositiveAllowedOffsetDuration = msecs( millisecond_count );
 
             argument_array = argument_array[ 1 .. $ ];
         }
