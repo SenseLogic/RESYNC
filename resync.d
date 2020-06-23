@@ -38,6 +38,8 @@ alias HASH = ubyte[ 16 ];
 
 enum FILE_TYPE
 {
+    // -- CONSTANTS
+
     None,
     Identical,
     Updated,
@@ -51,6 +53,8 @@ enum FILE_TYPE
 
 class FILE
 {
+    // -- ATTRIBUTES
+
     FILE_TYPE
         Type;
     string
@@ -75,7 +79,7 @@ class FILE
         TargetFilePath,
         TargetRelativeFilePath;
 
-    // ~~
+    // -- INQUIRIES
 
     HASH GetSampleHash(
         long byte_count
@@ -130,6 +134,28 @@ class FILE
     }
 
     // ~~
+
+    void Dump(
+        )
+    {
+        writeln(
+            Path,
+            ", ",
+            RelativePath,
+            ", ",
+            ModificationTime,
+            ", ",
+            ByteCount,
+            ", ",
+            Type,
+            " ",
+            TargetFilePath,
+            " ",
+            TargetRelativeFilePath
+            );
+    }
+
+    // -- OPERATIONS
 
     HASH GetMinimumSampleHash(
         )
@@ -239,34 +265,14 @@ class FILE
     {
         Path.CopyFile( TargetFilePath );
     }
-
-    // ~~
-
-    void Dump(
-        )
-    {
-        writeln(
-            Path,
-            ", ",
-            RelativePath,
-            ", ",
-            ModificationTime,
-            ", ",
-            ByteCount,
-            ", ",
-            Type,
-            " ",
-            TargetFilePath,
-            " ",
-            TargetRelativeFilePath
-            );
-    }
 }
 
 // ~~
 
 class SUB_FOLDER
 {
+    // -- ATTRIBUTES
+
     string
         Path,
         RelativePath;
@@ -279,6 +285,8 @@ class SUB_FOLDER
 
 class FOLDER
 {
+    // -- ATTRIBUTES
+
     string
         Path;
     FILE[]
@@ -290,7 +298,7 @@ class FOLDER
     SUB_FOLDER[ string ]
         SubFolderMap;
 
-    // ~~
+    // -- INQUIRIES
 
     string GetRelativePath(
         string path
@@ -300,6 +308,17 @@ class FOLDER
     }
 
     // ~~
+
+    void Dump(
+        )
+    {
+        foreach ( file; FileArray )
+        {
+            file.Dump();
+        }
+    }
+
+    // -- OPERATIONS
 
     void Add(
         )
@@ -394,17 +413,6 @@ class FOLDER
         SubFolderMap = null;
 
         Read( Path );
-    }
-
-    // ~~
-
-    void Dump(
-        )
-    {
-        foreach ( file; FileArray )
-        {
-            file.Dump();
-        }
     }
 }
 
@@ -518,7 +526,7 @@ long GetByteCount(
 
             argument = argument[ 0 .. $ - 1 ];
         }
-        if ( argument.endsWith( 'k' ) )
+        else if ( argument.endsWith( 'k' ) )
         {
             unit_byte_count = 1024;
 
