@@ -357,26 +357,26 @@ class FOLDER
         {
             try
             {
-                foreach ( folder_entry; dirEntries( folder_path, SpanMode.shallow ) )
+                foreach ( file_path; dirEntries( folder_path, SpanMode.shallow ) )
                 {
                     sub_folder.IsEmpty = false;
 
-                    if ( folder_entry.isFile()
-                         && !folder_entry.isSymlink() )
+                    if ( file_path.isFile()
+                         && !file_path.isSymlink() )
                     {
-                        file_name = folder_entry.baseName();
-                        relative_file_path = GetRelativePath( folder_entry );
+                        file_name = file_path.baseName();
+                        relative_file_path = GetRelativePath( file_path );
 
                         if ( IsIncludedPath( relative_file_path, IncludedFilePathArray, ExcludedFilePathArray )
                              && IsIncludedPath( file_name, IncludedFileNameArray, ExcludedFileNameArray ) )
                         {
                             file = new FILE();
                             file.Name = file_name;
-                            file.Path = folder_entry;
+                            file.Path = file_path;
                             file.RelativePath = relative_file_path;
                             file.RelativeFolderPath = GetFolderPath( file.RelativePath );
-                            file.ModificationTime = folder_entry.timeLastModified;
-                            file.ByteCount = folder_entry.size();
+                            file.ModificationTime = file_path.timeLastModified;
+                            file.ByteCount = file_path.size();
 
                             FileArray ~= file;
                             FileMap[ file.RelativePath ] = file;
@@ -384,12 +384,12 @@ class FOLDER
                     }
                 }
 
-                foreach ( folder_entry; dirEntries( folder_path, SpanMode.shallow ) )
+                foreach ( file_path; dirEntries( folder_path, SpanMode.shallow ) )
                 {
-                    if ( folder_entry.isDir()
-                         && !folder_entry.isSymlink() )
+                    if ( file_path.isDir()
+                         && !file_path.isSymlink() )
                     {
-                        Read( folder_entry ~ '/' );
+                        Read( file_path ~ '/' );
                     }
                 }
             }
@@ -648,7 +648,7 @@ bool IsEmptyFolder(
     {
         it_is_empty_folder = true;
 
-        foreach ( folder_entry; dirEntries( folder_path, SpanMode.shallow ) )
+        foreach ( file_path; dirEntries( folder_path, SpanMode.shallow ) )
         {
             it_is_empty_folder = false;
 
