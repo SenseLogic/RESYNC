@@ -42,10 +42,10 @@ resync [options] SOURCE_FOLDER/ TARGET_FOLDER/
 --added : detect the added files
 --emptied : detect the emptied folders
 --include SUBFOLDER_FILTER/file_filter : include these file paths
---exclude SUBFOLDER_FILTER/file_filter : exclude these file paths
 --include SUBFOLDER_FILTER/ : include these folder paths
---exclude SUBFOLDER_FILTER/ : exclude these folder paths
 --include file_filter : include these file names
+--exclude SUBFOLDER_FILTER/file_filter : exclude these file paths
+--exclude SUBFOLDER_FILTER/ : exclude these folder paths
 --exclude file_filter : exclude these file names
 --sample 0 1M all : minimum, medium and maximum sample size (B for bytes, K for kilobytes, M for megabytes, G for gigabytes)
 --allowed 2 : maximum allowed modification time offset in milliseconds

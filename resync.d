@@ -353,7 +353,7 @@ class FOLDER
         SubFolderArray ~= sub_folder;
         SubFolderMap[ relative_folder_path ] = sub_folder;
 
-        if ( IsIncludedPath( relative_folder_path, IncludedFolderPathArray, ExcludedFolderPathArray ) )
+        if ( IsIncludedFolder( relative_folder_path, FileFilterArray, FileFilterIsInclusiveArray ) )
         {
             try
             {
@@ -367,8 +367,7 @@ class FOLDER
                         file_name = file_path.baseName();
                         relative_file_path = GetRelativePath( file_path );
 
-                        if ( IsIncludedPath( relative_file_path, IncludedFilePathArray, ExcludedFilePathArray )
-                             && IsIncludedPath( file_name, IncludedFileNameArray, ExcludedFileNameArray ) )
+                        if ( IsIncludedFile( relative_folder_path, relative_file_path, file_name, FileFilterArray, FileFilterIsInclusiveArray ) )
                         {
                             file = new FILE();
                             file.Name = file_name;
@@ -431,6 +430,8 @@ bool
     RemovedOptionIsEnabled,
     UpdatedOptionIsEnabled,
     VerboseOptionIsEnabled;
+bool[]
+    FileFilterIsInclusiveArray;
 long
     MinimumSampleByteCount,
     MediumSampleByteCount,
@@ -440,12 +441,7 @@ string
     TargetFolderPath;
 string[]
     ErrorMessageArray,
-    ExcludedFolderPathArray,
-    ExcludedFilePathArray,
-    ExcludedFileNameArray,
-    IncludedFolderPathArray,
-    IncludedFilePathArray,
-    IncludedFileNameArray;
+    FileFilterArray;
 Duration
     NegativeAdjustedOffsetDuration,
     NegativeAllowedOffsetDuration,
@@ -590,49 +586,120 @@ string GetFolderPath(
 
 // ~~
 
-bool IsIncludedPath(
-    string path,
-    string[] included_path_array,
-    string[] excluded_path_array
+bool IsIncludedFolder(
+    string folder_path,
+    string[] file_filter_array,
+    bool[] file_filter_is_inclusive_array
     )
 {
     bool
-        path_is_included;
+        file_filter_is_first,
+        file_filter_is_inclusive,
+        folder_is_included;
+    long
+        file_filter_index;
+    string
+        file_filter;
 
-    path_is_included = true;
+    folder_is_included = true;
 
-    if ( included_path_array.length > 0
-         || excluded_path_array.length > 0 )
+    if ( file_filter_array.length > 0 )
     {
-        if ( included_path_array.length > 0 )
+        file_filter_is_first = true;
+
+        for ( file_filter_index = 0;
+              file_filter_index < file_filter_array.length;
+              ++file_filter_index )
         {
-            path_is_included = false;
+            file_filter = file_filter_array[ file_filter_index ];
+            file_filter_is_inclusive = file_filter_is_inclusive_array[ file_filter_index ];
 
-            foreach ( included_path; included_path_array )
+            if ( file_filter.endsWith( '/' ) )
             {
-                if ( path.globMatch( included_path ) )
+                if ( file_filter_is_first
+                     && file_filter_is_inclusive )
                 {
-                    path_is_included = true;
+                    folder_is_included = false;
                 }
-            }
-        }
 
-        if ( excluded_path_array.length > 0
-             && path_is_included )
-        {
-            foreach ( excluded_path; excluded_path_array )
-            {
-                if ( path.globMatch( excluded_path ) )
+                if ( folder_path.globMatch( file_filter ~ '*' ) )
                 {
-                    path_is_included = false;
-
-                    break;
+                    folder_is_included = file_filter_is_inclusive;
                 }
+
+                file_filter_is_first = false;
             }
         }
     }
 
-    return path_is_included;
+    return folder_is_included;
+}
+
+// ~~
+
+bool IsIncludedFile(
+    string folder_path,
+    string file_path,
+    string file_name,
+    string[] file_filter_array,
+    bool[] file_filter_is_inclusive_array
+    )
+{
+    bool
+        file_filter_is_first,
+        file_filter_is_inclusive,
+        file_is_included;
+    long
+        file_filter_index;
+    string
+        file_filter;
+
+    file_is_included = true;
+
+    if ( file_filter_array.length > 0 )
+    {
+        file_filter_is_first = true;
+
+        for ( file_filter_index = 0;
+              file_filter_index < file_filter_array.length;
+              ++file_filter_index )
+        {
+            file_filter = file_filter_array[ file_filter_index ];
+            file_filter_is_inclusive = file_filter_is_inclusive_array[ file_filter_index ];
+
+            if ( file_filter_is_first
+                 && file_filter_is_inclusive )
+            {
+                file_is_included = false;
+            }
+
+            if ( file_filter.endsWith( '/' ) )
+            {
+                if ( folder_path.globMatch( file_filter ~ '*' ) )
+                {
+                    file_is_included = file_filter_is_inclusive;
+                }
+            }
+            else if ( file_filter.indexOf( '/' ) >= 0 )
+            {
+                if ( file_path.globMatch( file_filter ) )
+                {
+                    file_is_included = file_filter_is_inclusive;
+                }
+            }
+            else
+            {
+                if ( file_name.globMatch( file_filter ) )
+                {
+                    file_is_included = file_filter_is_inclusive;
+                }
+            }
+
+            file_filter_is_first = false;
+        }
+    }
+
+    return file_is_included;
 }
 
 // ~~
@@ -1522,7 +1589,6 @@ void main(
     long
         millisecond_count;
     string
-        logical_path,
         option;
 
     argument_array = argument_array[ 1 .. $ ];
@@ -1538,12 +1604,8 @@ void main(
     RemovedOptionIsEnabled = false;
     AddedOptionIsEnabled = false;
     EmptiedOptionIsEnabled = false;
-    IncludedFolderPathArray = null;
-    ExcludedFolderPathArray = null;
-    IncludedFilePathArray = null;
-    ExcludedFilePathArray = null;
-    IncludedFileNameArray = null;
-    ExcludedFileNameArray = null;
+    FileFilterArray = null;
+    FileFilterIsInclusiveArray = null;
     MinimumSampleByteCount = 0;
     MediumSampleByteCount = "1M".GetByteCount();
     MaximumSampleByteCount = "all".GetByteCount();
@@ -1601,43 +1663,12 @@ void main(
         {
             EmptiedOptionIsEnabled = true;
         }
-        else if ( option == "--include"
+        else if ( ( option == "--include"
+                    || option == "--exclude" )
                   && argument_array.length >= 1 )
         {
-            logical_path = argument_array[ 0 ].GetLogicalPath();
-
-            if ( logical_path.endsWith( '/' ) )
-            {
-                IncludedFolderPathArray ~= logical_path ~ '*';
-            }
-            else if ( logical_path.indexOf( '/' ) >= 0 )
-            {
-                IncludedFilePathArray ~= logical_path;
-            }
-            else
-            {
-                IncludedFileNameArray ~= logical_path;
-            }
-
-            argument_array = argument_array[ 1 .. $ ];
-        }
-        else if ( option == "--exclude"
-                  && argument_array.length >= 1 )
-        {
-            logical_path = argument_array[ 0 ].GetLogicalPath();
-
-            if ( logical_path.endsWith( '/' ) )
-            {
-                ExcludedFolderPathArray ~= logical_path ~ '*';
-            }
-            else if ( logical_path.indexOf( '/' ) >= 0 )
-            {
-                ExcludedFilePathArray ~= logical_path;
-            }
-            else
-            {
-                ExcludedFileNameArray ~= logical_path;
-            }
+            FileFilterArray ~= argument_array[ 0 ].GetLogicalPath();
+            FileFilterIsInclusiveArray ~= ( option == "--include" );
 
             argument_array = argument_array[ 1 .. $ ];
         }
@@ -1705,10 +1736,10 @@ void main(
         writeln( "    --added" );
         writeln( "    --emptied" );
         writeln( "    --include FOLDER_FILTER/file_filter" );
-        writeln( "    --exclude FOLDER_FILTER/file_filter" );
         writeln( "    --include FOLDER_FILTER/" );
-        writeln( "    --exclude FOLDER_FILTER/" );
         writeln( "    --include file_filter" );
+        writeln( "    --exclude FOLDER_FILTER/file_filter" );
+        writeln( "    --exclude FOLDER_FILTER/" );
         writeln( "    --exclude file_filter" );
         writeln( "    --sample 0 1M all" );
         writeln( "    --allowed 2" );
