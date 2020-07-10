@@ -353,49 +353,46 @@ class FOLDER
         SubFolderArray ~= sub_folder;
         SubFolderMap[ relative_folder_path ] = sub_folder;
 
-        if ( IsIncludedFolder( relative_folder_path, FileFilterArray, FileFilterIsInclusiveArray ) )
+        try
         {
-            try
+            foreach ( file_path; dirEntries( folder_path, SpanMode.shallow ) )
             {
-                foreach ( file_path; dirEntries( folder_path, SpanMode.shallow ) )
+                sub_folder.IsEmpty = false;
+
+                if ( file_path.isFile()
+                     && !file_path.isSymlink() )
                 {
-                    sub_folder.IsEmpty = false;
+                    file_name = file_path.baseName();
+                    relative_file_path = GetRelativePath( file_path );
 
-                    if ( file_path.isFile()
-                         && !file_path.isSymlink() )
+                    if ( IsIncludedFile( "/" ~ relative_folder_path, "/" ~ relative_file_path, file_name ) )
                     {
-                        file_name = file_path.baseName();
-                        relative_file_path = GetRelativePath( file_path );
+                        file = new FILE();
+                        file.Name = file_name;
+                        file.Path = file_path;
+                        file.RelativePath = relative_file_path;
+                        file.RelativeFolderPath = GetFolderPath( file.RelativePath );
+                        file.ModificationTime = file_path.timeLastModified;
+                        file.ByteCount = file_path.size();
 
-                        if ( IsIncludedFile( relative_folder_path, relative_file_path, file_name, FileFilterArray, FileFilterIsInclusiveArray ) )
-                        {
-                            file = new FILE();
-                            file.Name = file_name;
-                            file.Path = file_path;
-                            file.RelativePath = relative_file_path;
-                            file.RelativeFolderPath = GetFolderPath( file.RelativePath );
-                            file.ModificationTime = file_path.timeLastModified;
-                            file.ByteCount = file_path.size();
-
-                            FileArray ~= file;
-                            FileMap[ file.RelativePath ] = file;
-                        }
-                    }
-                }
-
-                foreach ( file_path; dirEntries( folder_path, SpanMode.shallow ) )
-                {
-                    if ( file_path.isDir()
-                         && !file_path.isSymlink() )
-                    {
-                        Read( file_path ~ '/' );
+                        FileArray ~= file;
+                        FileMap[ file.RelativePath ] = file;
                     }
                 }
             }
-            catch ( FileException file_exception )
+
+            foreach ( file_path; dirEntries( folder_path, SpanMode.shallow ) )
             {
-                Abort( "Can't read folder : " ~ folder_path );
+                if ( file_path.isDir()
+                     && !file_path.isSymlink() )
+                {
+                    Read( file_path ~ '/' );
+                }
             }
+        }
+        catch ( FileException file_exception )
+        {
+            Abort( "Can't read folder : " ~ folder_path );
         }
     }
 
@@ -586,67 +583,13 @@ string GetFolderPath(
 
 // ~~
 
-bool IsIncludedFolder(
-    string folder_path,
-    string[] file_filter_array,
-    bool[] file_filter_is_inclusive_array
-    )
-{
-    bool
-        file_filter_is_first,
-        file_filter_is_inclusive,
-        folder_is_included;
-    long
-        file_filter_index;
-    string
-        file_filter;
-
-    folder_is_included = true;
-
-    if ( file_filter_array.length > 0 )
-    {
-        file_filter_is_first = true;
-
-        for ( file_filter_index = 0;
-              file_filter_index < file_filter_array.length;
-              ++file_filter_index )
-        {
-            file_filter = file_filter_array[ file_filter_index ];
-            file_filter_is_inclusive = file_filter_is_inclusive_array[ file_filter_index ];
-
-            if ( file_filter.endsWith( '/' ) )
-            {
-                if ( file_filter_is_first
-                     && file_filter_is_inclusive )
-                {
-                    folder_is_included = false;
-                }
-
-                if ( folder_path.globMatch( file_filter ~ '*' ) )
-                {
-                    folder_is_included = file_filter_is_inclusive;
-                }
-
-                file_filter_is_first = false;
-            }
-        }
-    }
-
-    return folder_is_included;
-}
-
-// ~~
-
 bool IsIncludedFile(
     string folder_path,
     string file_path,
-    string file_name,
-    string[] file_filter_array,
-    bool[] file_filter_is_inclusive_array
+    string file_name
     )
 {
     bool
-        file_filter_is_first,
         file_filter_is_inclusive,
         file_is_included;
     long
@@ -656,21 +599,19 @@ bool IsIncludedFile(
 
     file_is_included = true;
 
-    if ( file_filter_array.length > 0 )
+    if ( FileFilterArray.length > 0 )
     {
-        file_filter_is_first = true;
-
         for ( file_filter_index = 0;
-              file_filter_index < file_filter_array.length;
+              file_filter_index < FileFilterArray.length;
               ++file_filter_index )
         {
-            file_filter = file_filter_array[ file_filter_index ];
-            file_filter_is_inclusive = file_filter_is_inclusive_array[ file_filter_index ];
+            file_filter = FileFilterArray[ file_filter_index ];
+            file_filter_is_inclusive = FileFilterIsInclusiveArray[ file_filter_index ];
 
-            if ( file_filter_is_first
-                 && file_filter_is_inclusive )
+            if ( !file_filter.startsWith( '/' )
+                 && !file_filter.startsWith( "*/" ) )
             {
-                file_is_included = false;
+                file_filter = "*/" ~ file_filter;
             }
 
             if ( file_filter.endsWith( '/' ) )
@@ -694,8 +635,6 @@ bool IsIncludedFile(
                     file_is_included = file_filter_is_inclusive;
                 }
             }
-
-            file_filter_is_first = false;
         }
     }
 
@@ -1607,7 +1546,7 @@ void main(
     FileFilterArray = null;
     FileFilterIsInclusiveArray = null;
     MinimumSampleByteCount = 0;
-    MediumSampleByteCount = "1M".GetByteCount();
+    MediumSampleByteCount = "1m".GetByteCount();
     MaximumSampleByteCount = "all".GetByteCount();
     NegativeAllowedOffsetDuration = msecs( -2 );
     PositiveAllowedOffsetDuration = msecs( 2 );
@@ -1663,8 +1602,8 @@ void main(
         {
             EmptiedOptionIsEnabled = true;
         }
-        else if ( ( option == "--include"
-                    || option == "--exclude" )
+        else if ( ( option == "--exclude"
+                    || option == "--include" )
                   && argument_array.length >= 1 )
         {
             FileFilterArray ~= argument_array[ 0 ].GetLogicalPath();
@@ -1735,13 +1674,9 @@ void main(
         writeln( "    --removed" );
         writeln( "    --added" );
         writeln( "    --emptied" );
-        writeln( "    --include FOLDER_FILTER/file_filter" );
-        writeln( "    --include FOLDER_FILTER/" );
-        writeln( "    --include file_filter" );
-        writeln( "    --exclude FOLDER_FILTER/file_filter" );
-        writeln( "    --exclude FOLDER_FILTER/" );
         writeln( "    --exclude file_filter" );
-        writeln( "    --sample 0 1M all" );
+        writeln( "    --include file_filter" );
+        writeln( "    --sample 0 1m all" );
         writeln( "    --allowed 2" );
         writeln( "    --abort" );
         writeln( "    --verbose" );
@@ -1750,7 +1685,7 @@ void main(
         writeln( "Examples :" );
         writeln( "    resync --create --updated --changed --removed --added --emptied --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --updated --changed --removed --added --emptied --compare sample --sample 128K 1M 1M --verbose --confirm --preview SOURCE_FOLDER/ TARGET_FOLDER/" );
-        writeln( "    resync --updated --changed --removed --added --emptied --exclude \".git/\" --exclude \"*/.git/\" --exclude \"*.tmp\" --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --updated --changed --removed --added --emptied --exclude \"*/.git/\" --exclude \"*.tmp\" --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
 
         Abort( "Invalid arguments : " ~ argument_array.to!string() );
     }
