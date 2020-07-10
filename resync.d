@@ -609,7 +609,7 @@ bool IsIncludedFile(
             file_filter_is_inclusive = FileFilterIsInclusiveArray[ file_filter_index ];
 
             if ( !file_filter.startsWith( '/' )
-                 && !file_filter.startsWith( "*/" ) )
+                 && !file_filter.startsWith( '*' ) )
             {
                 file_filter = "*/" ~ file_filter;
             }
@@ -1684,8 +1684,8 @@ void main(
         writeln( "    --preview" );
         writeln( "Examples :" );
         writeln( "    resync --create --updated --changed --removed --added --emptied --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
-        writeln( "    resync --updated --changed --removed --added --emptied --compare sample --sample 128K 1M 1M --verbose --confirm --preview SOURCE_FOLDER/ TARGET_FOLDER/" );
-        writeln( "    resync --updated --changed --removed --added --emptied --exclude \"*/.git/\" --exclude \"*.tmp\" --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --updated --changed --removed --added --moved --emptied --sample 128k 1m 1m --verbose --confirm --preview SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --updated --changed --removed --added --emptied --exclude \".git/\" --exclude \"*.tmp\" --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
 
         Abort( "Invalid arguments : " ~ argument_array.to!string() );
     }

@@ -72,7 +72,7 @@ resync --updated --changed --removed --added --emptied --exclude "*/.git/" --exc
 Detects the updated/changed/removed/added files and the emptied folders, excluding all ".git/" subfolders and "\*.tmp" file names, prints these changes and asks confirmation before applying them to the target folder.
 
 ```bash
-resync --updated --changed --removed --added --emptied --exclude "/" --include "/A/" --include "*/C/" --confirm SOURCE_FOLDER/ TARGET_FOLDER/
+resync --updated --changed --removed --added --emptied --exclude "/" --include "/A/" --include "C/" --confirm SOURCE_FOLDER/ TARGET_FOLDER/
 ```
 
 Detects the updated/changed/removed/added files and the emptied folders, including only the "/A/" root folder and all "C/" subfolders, prints these changes and asks confirmation before applying them to the target folder.
