@@ -25,7 +25,7 @@ import core.time : msecs, Duration;
 import std.conv : to;
 import std.datetime : SysTime;
 import std.digest.md : MD5;
-import std.file : copy, dirEntries, exists, getAttributes, getTimes, mkdir, mkdirRecurse, readText, remove, rename, rmdir, setAttributes, setTimes, write, FileException, PreserveAttributes, SpanMode;
+import std.file : copy, dirEntries, exists, getAttributes, getTimes, mkdir, mkdirRecurse, readText, remove, rename, rmdir, setAttributes, setTimes, write, PreserveAttributes, SpanMode;
 import std.path : baseName, dirName, globMatch;
 import std.stdio : readln, writeln, File;
 import std.string : endsWith, indexOf, join, replace, startsWith, toLower, toUpper;
@@ -345,54 +345,57 @@ class FOLDER
 
         relative_folder_path = GetRelativePath( folder_path );
 
-        sub_folder = new SUB_FOLDER();
-        sub_folder.Path = folder_path;
-        sub_folder.RelativePath = relative_folder_path;
-        sub_folder.IsEmpty = true;
-
-        SubFolderArray ~= sub_folder;
-        SubFolderMap[ relative_folder_path ] = sub_folder;
-
-        try
+        if ( IsIncludedFolder( "/" ~ relative_folder_path ) )
         {
-            foreach ( file_path; dirEntries( folder_path, SpanMode.shallow ) )
+            sub_folder = new SUB_FOLDER();
+            sub_folder.Path = folder_path;
+            sub_folder.RelativePath = relative_folder_path;
+            sub_folder.IsEmpty = true;
+
+            SubFolderArray ~= sub_folder;
+            SubFolderMap[ relative_folder_path ] = sub_folder;
+
+            try
             {
-                sub_folder.IsEmpty = false;
-
-                if ( file_path.isFile()
-                     && !file_path.isSymlink() )
+                foreach ( file_path; dirEntries( folder_path, SpanMode.shallow ) )
                 {
-                    file_name = file_path.baseName();
-                    relative_file_path = GetRelativePath( file_path );
+                    sub_folder.IsEmpty = false;
 
-                    if ( IsIncludedFile( "/" ~ relative_folder_path, "/" ~ relative_file_path, file_name ) )
+                    if ( file_path.isFile()
+                         && !file_path.isSymlink() )
                     {
-                        file = new FILE();
-                        file.Name = file_name;
-                        file.Path = file_path;
-                        file.RelativePath = relative_file_path;
-                        file.RelativeFolderPath = GetFolderPath( file.RelativePath );
-                        file.ModificationTime = file_path.timeLastModified;
-                        file.ByteCount = file_path.size();
+                        file_name = file_path.baseName();
+                        relative_file_path = GetRelativePath( file_path );
 
-                        FileArray ~= file;
-                        FileMap[ file.RelativePath ] = file;
+                        if ( IsIncludedFile( "/" ~ relative_folder_path, "/" ~ relative_file_path, file_name ) )
+                        {
+                            file = new FILE();
+                            file.Name = file_name;
+                            file.Path = file_path;
+                            file.RelativePath = relative_file_path;
+                            file.RelativeFolderPath = GetFolderPath( file.RelativePath );
+                            file.ModificationTime = file_path.timeLastModified;
+                            file.ByteCount = file_path.size();
+
+                            FileArray ~= file;
+                            FileMap[ file.RelativePath ] = file;
+                        }
+                    }
+                }
+
+                foreach ( file_path; dirEntries( folder_path, SpanMode.shallow ) )
+                {
+                    if ( file_path.isDir()
+                         && !file_path.isSymlink() )
+                    {
+                        Read( file_path ~ '/' );
                     }
                 }
             }
-
-            foreach ( file_path; dirEntries( folder_path, SpanMode.shallow ) )
+            catch ( Exception exception )
             {
-                if ( file_path.isDir()
-                     && !file_path.isSymlink() )
-                {
-                    Read( file_path ~ '/' );
-                }
+                Abort( "Can't read folder : " ~ folder_path );
             }
-        }
-        catch ( FileException file_exception )
-        {
-            Abort( "Can't read folder : " ~ folder_path );
         }
     }
 
@@ -428,7 +431,8 @@ bool
     UpdatedOptionIsEnabled,
     VerboseOptionIsEnabled;
 bool[]
-    FileFilterIsInclusiveArray;
+    FileFilterIsInclusiveArray,
+    FolderFilterIsInclusiveArray;
 long
     MinimumSampleByteCount,
     MediumSampleByteCount,
@@ -438,7 +442,8 @@ string
     TargetFolderPath;
 string[]
     ErrorMessageArray,
-    FileFilterArray;
+    FileFilterArray,
+    FolderFilterArray;
 Duration
     NegativeAdjustedOffsetDuration,
     NegativeAllowedOffsetDuration,
@@ -481,12 +486,12 @@ void Abort(
 
 void Abort(
     string message,
-    FileException file_exception,
+    Exception exception,
     bool it_must_exit = false
     )
 {
     PrintError( message );
-    PrintError( file_exception.msg );
+    PrintError( exception.msg );
 
     if ( it_must_exit
          || AbortOptionIsEnabled )
@@ -559,6 +564,17 @@ string GetLogicalPath(
 
 // ~~
 
+bool IsFolderPath(
+    string folder_path
+    )
+{
+    return
+        folder_path.endsWith( '/' )
+        || folder_path.endsWith( '\\' );
+}
+
+// ~~
+
 string GetFolderPath(
     string file_path
     )
@@ -579,6 +595,47 @@ string GetFolderPath(
     }
 
     return folder_path;
+}
+
+// ~~
+
+bool IsIncludedFolder(
+    string folder_path
+    )
+{
+    bool
+        folder_filter_is_inclusive,
+        folder_is_included;
+    long
+        folder_filter_index;
+    string
+        folder_filter;
+
+    folder_is_included = true;
+
+    if ( FolderFilterArray.length > 0 )
+    {
+        for ( folder_filter_index = 0;
+              folder_filter_index < FolderFilterArray.length;
+              ++folder_filter_index )
+        {
+            folder_filter = FolderFilterArray[ folder_filter_index ];
+            folder_filter_is_inclusive = FolderFilterIsInclusiveArray[ folder_filter_index ];
+
+            if ( !folder_filter.startsWith( '/' )
+                 && !folder_filter.startsWith( '*' ) )
+            {
+                folder_filter = "*/" ~ folder_filter;
+            }
+
+            if ( folder_path.globMatch( folder_filter ~ '*' ) )
+            {
+                folder_is_included = folder_filter_is_inclusive;
+            }
+        }
+    }
+
+    return folder_is_included;
 }
 
 // ~~
@@ -661,9 +718,9 @@ bool IsEmptyFolder(
             break;
         }
     }
-    catch ( FileException file_exception )
+    catch ( Exception exception )
     {
-        Abort( "Can't read folder : " ~ folder_path, file_exception, true );
+        Abort( "Can't read folder : " ~ folder_path, exception, true );
     }
 
     return it_is_empty_folder;
@@ -686,9 +743,9 @@ void AddFolder(
                 folder_path.mkdirRecurse();
             }
         }
-        catch ( FileException file_exception )
+        catch ( Exception exception )
         {
-            Abort( "Can't add folder : " ~ folder_path, file_exception, true );
+            Abort( "Can't add folder : " ~ folder_path, exception, true );
         }
     }
 }
@@ -705,9 +762,9 @@ void RemoveFolder(
         {
             folder_path.rmdir();
         }
-        catch ( FileException file_exception )
+        catch ( Exception exception )
         {
-            Abort( "Can't create folder : " ~ folder_path, file_exception, true );
+            Abort( "Can't create folder : " ~ folder_path, exception, true );
         }
     }
 }
@@ -724,9 +781,9 @@ void RemoveFile(
         {
             file_path.remove();
         }
-        catch ( FileException file_exception )
+        catch ( Exception exception )
         {
-            Abort( "Can't remove file : " ~ file_path, file_exception );
+            Abort( "Can't remove file : " ~ file_path, exception );
         }
     }
 }
@@ -768,9 +825,9 @@ void MoveFile(
             target_file_path.setAttributes( attributes );
             target_file_path.setTimes( access_time, modification_time );
         }
-        catch ( FileException file_exception )
+        catch ( Exception exception )
         {
-            Abort( "Can't move file : " ~ source_file_path ~ " => " ~ target_file_path, file_exception );
+            Abort( "Can't move file : " ~ source_file_path ~ " => " ~ target_file_path, exception );
         }
     }
 }
@@ -798,9 +855,9 @@ void AdjustFile(
             target_file_path.setAttributes( attributes );
             target_file_path.setTimes( access_time, modification_time );
         }
-        catch ( FileException file_exception )
+        catch ( Exception exception )
         {
-            Abort( "Can't adjust file : " ~ source_file_path ~ " => " ~ target_file_path, file_exception );
+            Abort( "Can't adjust file : " ~ source_file_path ~ " => " ~ target_file_path, exception );
         }
     }
 }
@@ -862,9 +919,9 @@ void CopyFile(
                 target_file_path.setTimes( access_time, modification_time );
             }
         }
-        catch ( FileException file_exception )
+        catch ( Exception exception )
         {
-            Abort( "Can't copy file : " ~ source_file_path ~ " => " ~ target_file_path, file_exception );
+            Abort( "Can't copy file : " ~ source_file_path ~ " => " ~ target_file_path, exception );
         }
     }
 }
@@ -1543,6 +1600,8 @@ void main(
     RemovedOptionIsEnabled = false;
     AddedOptionIsEnabled = false;
     EmptiedOptionIsEnabled = false;
+    FolderFilterArray = null;
+    FolderFilterIsInclusiveArray = null;
     FileFilterArray = null;
     FileFilterIsInclusiveArray = null;
     MinimumSampleByteCount = 0;
@@ -1601,6 +1660,16 @@ void main(
         else if ( option == "--emptied" )
         {
             EmptiedOptionIsEnabled = true;
+        }
+        else if ( ( option == "--ignore"
+                    || option == "--keep" )
+                  && argument_array.length >= 1
+                  && argument_array[ 0 ].IsFolderPath() )
+        {
+            FolderFilterArray ~= argument_array[ 0 ].GetLogicalPath();
+            FolderFilterIsInclusiveArray ~= ( option == "--keep" );
+
+            argument_array = argument_array[ 1 .. $ ];
         }
         else if ( ( option == "--exclude"
                     || option == "--include" )
