@@ -47,7 +47,7 @@ resync [options] SOURCE_FOLDER/ TARGET_FOLDER/
 --include file_filter : include matching files or folders
 --sample 0 1m all : minimum, medium and maximum sample size (`b` for bytes, `k` for kilobytes, `m` for megabytes, `g` for gigabytes)
 --allowed 2 : maximum allowed modification time offset in milliseconds
---abort : abort on file copy errors
+--abort : abort on errors
 --verbose : show the processing messages
 --confirm : print the changes and ask confirmation before applying them
 --preview : preview the changes without applying them

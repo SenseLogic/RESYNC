@@ -764,7 +764,7 @@ void RemoveFolder(
         }
         catch ( Exception exception )
         {
-            Abort( "Can't create folder : " ~ folder_path, exception, true );
+            Abort( "Can't remove folder : " ~ folder_path, exception, true );
         }
     }
 }
