@@ -1661,22 +1661,22 @@ void main(
         {
             EmptiedOptionIsEnabled = true;
         }
-        else if ( ( option == "--ignore"
-                    || option == "--keep" )
+        else if ( ( option == "--exclude"
+                    || option == "--include" )
                   && argument_array.length >= 1
                   && argument_array[ 0 ].IsFolderPath() )
         {
             FolderFilterArray ~= argument_array[ 0 ].GetLogicalPath();
-            FolderFilterIsInclusiveArray ~= ( option == "--keep" );
+            FolderFilterIsInclusiveArray ~= ( option == "--include" );
 
             argument_array = argument_array[ 1 .. $ ];
         }
-        else if ( ( option == "--exclude"
-                    || option == "--include" )
+        else if ( ( option == "--ignore"
+                    || option == "--keep" )
                   && argument_array.length >= 1 )
         {
             FileFilterArray ~= argument_array[ 0 ].GetLogicalPath();
-            FileFilterIsInclusiveArray ~= ( option == "--include" );
+            FileFilterIsInclusiveArray ~= ( option == "--keep" );
 
             argument_array = argument_array[ 1 .. $ ];
         }
@@ -1743,8 +1743,10 @@ void main(
         writeln( "    --removed" );
         writeln( "    --added" );
         writeln( "    --emptied" );
-        writeln( "    --exclude file_filter" );
-        writeln( "    --include file_filter" );
+        writeln( "    --exclude FOLDER_FILTER/" );
+        writeln( "    --include FOLDER_FILTER/" );
+        writeln( "    --ignore file_filter" );
+        writeln( "    --keep file_filter" );
         writeln( "    --sample 0 1m all" );
         writeln( "    --allowed 2" );
         writeln( "    --abort" );
@@ -1753,8 +1755,9 @@ void main(
         writeln( "    --preview" );
         writeln( "Examples :" );
         writeln( "    resync --create --updated --changed --removed --added --emptied --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --updated --changed --removed --added --moved --emptied --verbose --confirm --preview SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --updated --changed --removed --added --moved --emptied --sample 128k 1m 1m --verbose --confirm --preview SOURCE_FOLDER/ TARGET_FOLDER/" );
-        writeln( "    resync --updated --changed --removed --added --emptied --exclude \".git/\" --exclude \"*.tmp\" --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --updated --changed --removed --added --emptied --exclude \".git/\" --ignore \"*.tmp\" --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
 
         Abort( "Invalid arguments : " ~ argument_array.to!string() );
     }
