@@ -41,10 +41,10 @@ resync [options] SOURCE_FOLDER/ TARGET_FOLDER/
 --removed : detect the removed files
 --added : detect the added files
 --emptied : detect the emptied folders
---exclude FOLDER_FILTER/ : exclude matching folders
---include FOLDER_FILTER/ : include matching folders
---ignore file_filter : ignore matching files
---keep file_filter : keep matching files
+--exclude FOLDER_FILTER/ : exclude all matching folders
+--include FOLDER/ : include this folder
+--ignore file_filter : ignore all matching files
+--keep file_filter : keep all matching files
 --sample 0 1m all : minimum, medium and maximum sample size (`b` for bytes, `k` for kilobytes, `m` for megabytes, `g` for gigabytes)
 --allowed 2 : maximum allowed modification time offset in milliseconds
 --abort : abort on errors
@@ -68,16 +68,28 @@ resync --updated --changed --removed --added --moved --emptied --verbose --confi
 Detects the updated/changed/removed/added/moved files and the emptied folders, then prints these changes and asks confirmation before applying them to the target folder.
 
 ```bash
+resync --updated --changed --removed --added --moved --emptied --sample 128k 1m 1m --verbose --confirm SOURCE_FOLDER/ TARGET_FOLDER/
+```
+
+Detects the updated/changed/removed/added/moved files and the emptied folders, sampling at least 128 kilobytes and up to 1 megabyte, then prints these changes and asks confirmation before applying them to the target folder.
+
+```bash
 resync --updated --changed --removed --added --emptied --exclude ".git/" --ignore "*.tmp" --confirm SOURCE_FOLDER/ TARGET_FOLDER/
 ```
 
-Detects the updated/changed/removed/added files and the emptied folders, excluding ".git/" subfolders and ignoring "\*.tmp" files, prints these changes and asks confirmation before applying them to the target folder.
+Detects the updated/changed/removed/added files and the emptied folders, excluding all ".git/" subfolders and ignoring all "\*.tmp" files, prints these changes and asks confirmation before applying them to the target folder.
+
+```bash
+resync --updated --changed --removed --added --emptied --exclude "/" --include "/A/" --include "/C/" --confirm SOURCE_FOLDER/ TARGET_FOLDER/
+```
+
+Detects the updated/changed/removed/added files and the emptied folders, including only the "/A/" and "/C/" folders, prints these changes and asks confirmation before applying them to the target folder.
 
 ```bash
 resync --updated --changed --removed --added --emptied --ignore "/" --keep "/A/" --keep "C/" --confirm SOURCE_FOLDER/ TARGET_FOLDER/
 ```
 
-Detects the updated/changed/removed/added files and the emptied folders, keeping only the files inside the "/A/" folder and "C/" subfolders, prints these changes and asks confirmation before applying them to the target folder.
+Detects the updated/changed/removed/added files and the emptied folders, keeping only the files inside the "/A/" folder and all "C/" subfolders, prints these changes and asks confirmation before applying them to the target folder.
 
 ```bash
 resync --updated --removed --added --preview SOURCE_FOLDER/ TARGET_FOLDER/

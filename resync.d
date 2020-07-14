@@ -564,6 +564,17 @@ string GetLogicalPath(
 
 // ~~
 
+bool IsRootPath(
+    string folder_path
+    )
+{
+    return
+        folder_path.startsWith( '/' )
+        || folder_path.endsWith( '\\' );
+}
+
+// ~~
+
 bool IsFolderPath(
     string folder_path
     )
@@ -571,6 +582,17 @@ bool IsFolderPath(
     return
         folder_path.endsWith( '/' )
         || folder_path.endsWith( '\\' );
+}
+
+// ~~
+
+bool IsFilter(
+    string folder_path
+    )
+{
+    return
+        folder_path.indexOf( '*' ) >= 0
+        || folder_path.indexOf( '?' ) >= 0;
 }
 
 // ~~
@@ -622,15 +644,26 @@ bool IsIncludedFolder(
             folder_filter = FolderFilterArray[ folder_filter_index ];
             folder_filter_is_inclusive = FolderFilterIsInclusiveArray[ folder_filter_index ];
 
-            if ( !folder_filter.startsWith( '/' )
-                 && !folder_filter.startsWith( '*' ) )
+            if ( folder_filter_is_inclusive )
             {
-                folder_filter = "*/" ~ folder_filter;
+                if ( folder_path.startsWith( folder_filter )
+                     || folder_filter.startsWith( folder_path ) )
+                {
+                    folder_is_included = true;
+                }
             }
-
-            if ( folder_path.globMatch( folder_filter ~ '*' ) )
+            else
             {
-                folder_is_included = folder_filter_is_inclusive;
+                if ( !folder_filter.startsWith( '/' )
+                     && !folder_filter.startsWith( '*' ) )
+                {
+                    folder_filter = "*/" ~ folder_filter;
+                }
+
+                if ( folder_path.globMatch( folder_filter ~ '*' ) )
+                {
+                    folder_is_included = false;
+                }
             }
         }
     }
@@ -1661,13 +1694,23 @@ void main(
         {
             EmptiedOptionIsEnabled = true;
         }
-        else if ( ( option == "--exclude"
-                    || option == "--include" )
+        else if ( option == "--exclude"
                   && argument_array.length >= 1
                   && argument_array[ 0 ].IsFolderPath() )
         {
             FolderFilterArray ~= argument_array[ 0 ].GetLogicalPath();
-            FolderFilterIsInclusiveArray ~= ( option == "--include" );
+            FolderFilterIsInclusiveArray ~= false;
+
+            argument_array = argument_array[ 1 .. $ ];
+        }
+        else if ( option == "--include"
+                  && argument_array.length >= 1
+                  && argument_array[ 0 ].IsRootPath()
+                  && argument_array[ 0 ].IsFolderPath()
+                  && !argument_array[ 0 ].IsFilter() )
+        {
+            FolderFilterArray ~= argument_array[ 0 ].GetLogicalPath();
+            FolderFilterIsInclusiveArray ~= true;
 
             argument_array = argument_array[ 1 .. $ ];
         }
@@ -1744,7 +1787,7 @@ void main(
         writeln( "    --added" );
         writeln( "    --emptied" );
         writeln( "    --exclude FOLDER_FILTER/" );
-        writeln( "    --include FOLDER_FILTER/" );
+        writeln( "    --include FOLDER/" );
         writeln( "    --ignore file_filter" );
         writeln( "    --keep file_filter" );
         writeln( "    --sample 0 1m all" );
@@ -1755,10 +1798,16 @@ void main(
         writeln( "    --preview" );
         writeln( "Examples :" );
         writeln( "    resync --create --updated --changed --removed --added --emptied --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
-        writeln( "    resync --updated --changed --removed --added --moved --emptied --verbose --confirm --preview SOURCE_FOLDER/ TARGET_FOLDER/" );
-        writeln( "    resync --updated --changed --removed --added --moved --emptied --sample 128k 1m 1m --verbose --confirm --preview SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --updated --changed --removed --added --moved --emptied --verbose --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --updated --changed --removed --added --moved --emptied --sample 128k 1m 1m --verbose --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --updated --changed --removed --added --emptied --exclude \".git/\" --ignore \"*.tmp\" --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --updated --changed --removed --added --emptied --exclude \"/\" --include \"/A/\" --include \"/C/\" --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --updated --changed --removed --added --emptied --ignore \"/\" --keep \"/A/\" --keep \"C/\" --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --updated --removed --added --preview SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --adjusted 1 --allowed 2 --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --moved --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
 
         Abort( "Invalid arguments : " ~ argument_array.to!string() );
     }
 }
+
