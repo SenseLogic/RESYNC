@@ -336,6 +336,7 @@ class FOLDER
     {
         string
             file_name,
+            file_path,
             relative_file_path,
             relative_folder_path;
         FILE
@@ -357,13 +358,14 @@ class FOLDER
 
             try
             {
-                foreach ( file_path; dirEntries( folder_path, SpanMode.shallow ) )
+                foreach ( folder_entry; dirEntries( folder_path, SpanMode.shallow ) )
                 {
                     sub_folder.IsEmpty = false;
 
-                    if ( file_path.isFile()
-                         && !file_path.isSymlink() )
+                    if ( folder_entry.isFile
+                         && !folder_entry.isSymlink )
                     {
+                        file_path = folder_entry.name;
                         file_name = file_path.baseName();
                         relative_file_path = GetRelativePath( file_path );
 
@@ -374,8 +376,8 @@ class FOLDER
                             file.Path = file_path;
                             file.RelativePath = relative_file_path;
                             file.RelativeFolderPath = GetFolderPath( file.RelativePath );
-                            file.ModificationTime = file_path.timeLastModified;
-                            file.ByteCount = file_path.size();
+                            file.ModificationTime = folder_entry.timeLastModified;
+                            file.ByteCount = folder_entry.size;
 
                             FileArray ~= file;
                             FileMap[ file.RelativePath ] = file;
@@ -383,12 +385,12 @@ class FOLDER
                     }
                 }
 
-                foreach ( file_path; dirEntries( folder_path, SpanMode.shallow ) )
+                foreach ( folder_entry; dirEntries( folder_path, SpanMode.shallow ) )
                 {
-                    if ( file_path.isDir()
-                         && !file_path.isSymlink() )
+                    if ( folder_entry.isDir
+                         && !folder_entry.isSymlink )
                     {
-                        Read( file_path ~ '/' );
+                        Read( folder_entry.name ~ '/' );
                     }
                 }
             }
