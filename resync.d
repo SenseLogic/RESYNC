@@ -26,9 +26,9 @@ import std.conv : to;
 import std.datetime : SysTime;
 import std.digest.md : MD5;
 import std.file : copy, dirEntries, exists, getAttributes, getTimes, mkdir, mkdirRecurse, readText, remove, rename, rmdir, setAttributes, setTimes, write, PreserveAttributes, SpanMode;
-import std.path : baseName, dirName, globMatch;
+import std.path : globMatch;
 import std.stdio : readln, writeln, File;
-import std.string : endsWith, indexOf, join, replace, startsWith, toLower, toUpper;
+import std.string : endsWith, indexOf, join, lastIndexOf, replace, startsWith, toLower, toUpper;
 
 // -- TYPES
 
@@ -366,7 +366,7 @@ class FOLDER
                          && !folder_entry.isSymlink )
                     {
                         file_path = folder_entry.name;
-                        file_name = file_path.baseName();
+                        file_name = file_path.GetFileName();
                         relative_file_path = GetRelativePath( file_path );
 
                         if ( IsIncludedFile( "/" ~ relative_folder_path, "/" ~ relative_file_path, file_name ) )
@@ -557,15 +557,6 @@ long GetByteCount(
 
 // ~~
 
-string GetLogicalPath(
-    string path
-    )
-{
-    return path.replace( "\\", "/" );
-}
-
-// ~~
-
 bool IsRootPath(
     string folder_path
     )
@@ -599,26 +590,53 @@ bool IsFilter(
 
 // ~~
 
+string GetLogicalPath(
+    string path
+    )
+{
+    return path.replace( "\\", "/" );
+}
+
+// ~~
+
 string GetFolderPath(
     string file_path
     )
 {
-    string
-        folder_path;
+    long
+        slash_character_index;
 
-    folder_path = file_path.dirName();
+    slash_character_index = file_path.lastIndexOf( '/' );
 
-    if ( folder_path != "" )
+    if ( slash_character_index >= 0 )
     {
-        folder_path ~= '/';
+        return file_path[ 0 .. slash_character_index + 1 ];
     }
-
-    if ( folder_path == "./" )
+    else
     {
-        folder_path = "";
+        return "";
     }
+}
 
-    return folder_path;
+// ~~
+
+string GetFileName(
+    string file_path
+    )
+{
+    long
+        slash_character_index;
+
+    slash_character_index = file_path.lastIndexOf( '/' );
+
+    if ( slash_character_index >= 0 )
+    {
+        return file_path[ slash_character_index + 1 .. $ ];
+    }
+    else
+    {
+        return file_path;
+    }
 }
 
 // ~~
@@ -630,20 +648,13 @@ bool IsIncludedFolder(
     bool
         folder_filter_is_inclusive,
         folder_is_included;
-    long
-        folder_filter_index;
-    string
-        folder_filter;
 
     folder_is_included = true;
 
     if ( FolderFilterArray.length > 0 )
     {
-        for ( folder_filter_index = 0;
-              folder_filter_index < FolderFilterArray.length;
-              ++folder_filter_index )
+        foreach ( folder_filter_index, folder_filter; FolderFilterArray )
         {
-            folder_filter = FolderFilterArray[ folder_filter_index ];
             folder_filter_is_inclusive = FolderFilterIsInclusiveArray[ folder_filter_index ];
 
             if ( folder_filter_is_inclusive )
@@ -684,20 +695,16 @@ bool IsIncludedFile(
     bool
         file_filter_is_inclusive,
         file_is_included;
-    long
-        file_filter_index;
     string
-        file_filter;
+        file_name_filter,
+        folder_path_filter;
 
     file_is_included = true;
 
     if ( FileFilterArray.length > 0 )
     {
-        for ( file_filter_index = 0;
-              file_filter_index < FileFilterArray.length;
-              ++file_filter_index )
+        foreach ( file_filter_index, file_filter; FileFilterArray )
         {
-            file_filter = FileFilterArray[ file_filter_index ];
             file_filter_is_inclusive = FileFilterIsInclusiveArray[ file_filter_index ];
 
             if ( !file_filter.startsWith( '/' )
@@ -715,7 +722,11 @@ bool IsIncludedFile(
             }
             else if ( file_filter.indexOf( '/' ) >= 0 )
             {
-                if ( file_path.globMatch( file_filter ) )
+                folder_path_filter = file_filter.GetFolderPath();
+                file_name_filter = file_filter.GetFileName();
+
+                if ( folder_path.globMatch( folder_path_filter )
+                     && file_name.globMatch( file_name_filter ) )
                 {
                     file_is_included = file_filter_is_inclusive;
                 }
