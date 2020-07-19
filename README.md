@@ -45,6 +45,7 @@ resync [options] SOURCE_FOLDER/ TARGET_FOLDER/
 --include FOLDER/ : include this folder
 --ignore file_filter : ignore matching files
 --keep file_filter : keep matching files
+--select file_filter : select only matching files
 --sample 0 1m all : minimum, medium and maximum sample size (`b` for bytes, `k` for kilobytes, `m` for megabytes, `g` for gigabytes)
 --allowed 2 : maximum allowed modification time offset in milliseconds
 --abort : abort on errors
