@@ -369,7 +369,8 @@ class FOLDER
                         file_name = file_path.GetFileName();
                         relative_file_path = GetRelativePath( file_path );
 
-                        if ( IsIncludedFile( "/" ~ relative_folder_path, "/" ~ relative_file_path, file_name ) )
+                        if ( IsIncludedFile( "/" ~ relative_folder_path, "/" ~ relative_file_path, file_name )
+                             && IsSelectedFile( "/" ~ relative_folder_path, "/" ~ relative_file_path, file_name ) )
                         {
                             file = new FILE();
                             file.Name = file_name;
@@ -445,7 +446,8 @@ string
 string[]
     ErrorMessageArray,
     FileFilterArray,
-    FolderFilterArray;
+    FolderFilterArray,
+    SelectedFileFilterArray;
 Duration
     NegativeAdjustedOffsetDuration,
     NegativeAllowedOffsetDuration,
@@ -742,6 +744,68 @@ bool IsIncludedFile(
     }
 
     return file_is_included;
+}
+
+// ~~
+
+bool IsSelectedFile(
+    string folder_path,
+    string file_path,
+    string file_name
+    )
+{
+    bool
+        file_is_selected;
+    long
+        selected_file_filter_index;
+    string
+        file_name_filter,
+        folder_path_filter,
+        selected_file_filter;
+
+    file_is_selected = ( SelectedFileFilterArray.length == 0 );
+
+    for ( selected_file_filter_index = 0;
+          selected_file_filter_index < SelectedFileFilterArray.length
+          && !file_is_selected;
+          ++selected_file_filter_index )
+    {
+        selected_file_filter = SelectedFileFilterArray[ selected_file_filter_index ];
+
+        if ( !selected_file_filter.startsWith( '/' )
+             && !selected_file_filter.startsWith( '*' ) )
+        {
+            selected_file_filter = "*/" ~ selected_file_filter;
+        }
+
+        if ( selected_file_filter.endsWith( '/' ) )
+        {
+            if ( folder_path.globMatch( selected_file_filter ~ '*' ) )
+            {
+                file_is_selected = true;
+            }
+        }
+        else if ( selected_file_filter.indexOf( '/' ) >= 0 )
+        {
+            folder_path_filter = selected_file_filter.GetFolderPath();
+            file_name_filter = selected_file_filter.GetFileName();
+
+            if ( folder_path.globMatch( folder_path_filter )
+                 && file_name.globMatch( file_name_filter ) )
+            {
+                file_is_selected = true;
+            }
+        }
+        else
+        {
+            if ( file_name.globMatch( selected_file_filter ) )
+            {
+                file_is_selected = true;
+            }
+        }
+    }
+
+    return file_is_selected;
 }
 
 // ~~
@@ -1650,6 +1714,7 @@ void main(
     FolderFilterIsInclusiveArray = null;
     FileFilterArray = null;
     FileFilterIsInclusiveArray = null;
+    SelectedFileFilterArray = null;
     MinimumSampleByteCount = 0;
     MediumSampleByteCount = "1m".GetByteCount();
     MaximumSampleByteCount = "all".GetByteCount();
@@ -1736,6 +1801,13 @@ void main(
 
             argument_array = argument_array[ 1 .. $ ];
         }
+        else if ( option == "--select"
+                  && argument_array.length >= 1 )
+        {
+            SelectedFileFilterArray ~= argument_array[ 0 ].GetLogicalPath();
+
+            argument_array = argument_array[ 1 .. $ ];
+        }
         else if ( option == "--sample"
                   && argument_array.length >= 3 )
         {
@@ -1814,8 +1886,7 @@ void main(
         writeln( "    resync --updated --changed --removed --added --moved --emptied --verbose --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --updated --changed --removed --added --moved --emptied --sample 128k 1m 1m --verbose --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --updated --changed --removed --added --emptied --exclude \".git/\" --ignore \"*.tmp\" --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
-        writeln( "    resync --updated --changed --removed --added --emptied --exclude \"/\" --include \"/A/\" --include \"/C/\" --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
-        writeln( "    resync --updated --changed --removed --added --emptied --ignore \"/\" --keep \"/A/\" --keep \"C/\" --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --updated --changed --removed --added --emptied --select \"/A/\" --select \"/C/\" --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --updated --removed --added --preview SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --adjusted 1 --allowed 2 --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --moved --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
