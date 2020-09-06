@@ -222,8 +222,9 @@ class FILE
         )
     {
         return
-            ( MinimumSampleByteCount == 0
-              || GetMinimumSampleHash() == other_file.GetMinimumSampleHash() )
+            ByteCount == other_file.ByteCount
+            && ( MinimumSampleByteCount == 0
+                 || GetMinimumSampleHash() == other_file.GetMinimumSampleHash() )
             && ( MediumSampleByteCount == 0
                  || ByteCount <= MinimumSampleByteCount
                  || MediumSampleByteCount <= MinimumSampleByteCount
