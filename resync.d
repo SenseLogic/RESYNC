@@ -622,6 +622,22 @@ string GetFolderPath(
 
 // ~~
 
+string GetSuperFolderPath(
+    string folder_path
+    )
+{
+    if ( folder_path.endsWith( '/' ) )
+    {
+        return GetFolderPath( folder_path[ 0 .. $ - 1 ] );
+    }
+    else
+    {
+        return GetFolderPath( folder_path );
+    }
+}
+
+// ~~
+
 string GetFileName(
     string file_path
     )
@@ -1512,7 +1528,7 @@ void RemoveFolders(
 
                         target_folder_path.RemoveFolder();
 
-                        relative_folder_path = GetFolderPath( relative_folder_path );
+                        relative_folder_path = GetSuperFolderPath( relative_folder_path );
 
                         if ( relative_folder_path != "" )
                         {
