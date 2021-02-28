@@ -597,7 +597,7 @@ string GetLogicalPath(
     string path
     )
 {
-    return path.replace( "\\", "/" );
+    return path.replace( '\\', '/' );
 }
 
 // ~~
