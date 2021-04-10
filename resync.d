@@ -310,6 +310,25 @@ class FOLDER
 
     // ~~
 
+    FILE[] GetUnmatchedFileArray(
+        )
+    {
+        FILE[]
+            unmatched_file_array;
+
+        foreach ( file; FileArray )
+        {
+            if ( file.Type == FILE_TYPE.None )
+            {
+                unmatched_file_array ~= file;
+            }
+        }
+
+        return unmatched_file_array;
+    }
+
+    // ~~
+
     void Dump(
         )
     {
@@ -1130,19 +1149,25 @@ void FindMovedFiles(
         files_have_same_name;
     Duration
         modification_time_offset_duration;
+    FILE[]
+        source_file_array,
+        target_file_array;
 
     if ( VerboseOptionIsEnabled )
     {
         writeln( "Finding moved files" );
     }
 
+    source_file_array = SourceFolder.GetUnmatchedFileArray();
+    target_file_array = TargetFolder.GetUnmatchedFileArray();
+
     foreach ( pass_index; 0 .. 3 )
     {
-        foreach ( target_file; TargetFolder.FileArray )
+        foreach ( target_file; target_file_array )
         {
             if ( target_file.Type == FILE_TYPE.None )
             {
-                foreach ( source_file; SourceFolder.FileArray )
+                foreach ( source_file; source_file_array )
                 {
                     if ( target_file.Type == FILE_TYPE.None
                          && source_file.Type == FILE_TYPE.None
