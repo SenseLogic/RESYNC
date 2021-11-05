@@ -23,9 +23,9 @@
 import core.stdc.stdlib : exit;
 import core.time : msecs, Duration;
 import std.conv : to;
-import std.datetime : SysTime;
+import std.datetime : Clock, SysTime, UTC;
 import std.digest.md : MD5;
-import std.file : copy, dirEntries, exists, getAttributes, getTimes, mkdir, mkdirRecurse, readText, remove, rename, rmdir, setAttributes, setTimes, write, PreserveAttributes, SpanMode;
+import std.file : copy, dirEntries, exists, getAttributes, getSize, getTimes, mkdir, mkdirRecurse, readText, read, readText, remove, rename, rmdir, setAttributes, setTimes, write, PreserveAttributes, SpanMode;
 import std.path : globMatch;
 import std.stdio : readln, writeln, File;
 import std.string : endsWith, indexOf, join, lastIndexOf, replace, startsWith, toLower, toUpper;
@@ -62,10 +62,13 @@ class FILE
         Path,
         RelativePath,
         RelativeFolderPath;
-    SysTime
-        ModificationTime;
     long
         ByteCount;
+    uint
+        AttributeMask;
+    SysTime
+        ModificationTime,
+        AccessTime;
     bool
         HasMinimumSampleHash,
         HasMediumSampleHash,
@@ -76,6 +79,7 @@ class FILE
         MaximumSampleHash;
     string
         SourceFilePath,
+        SourceRelativeFilePath,
         TargetFilePath,
         TargetRelativeFilePath;
 
@@ -143,9 +147,13 @@ class FILE
             ", ",
             RelativePath,
             ", ",
+            ByteCount,
+            ", ",
+            AttributeMask,
+            ", ",
             ModificationTime,
             ", ",
-            ByteCount,
+            AccessTime,
             ", ",
             Type,
             " ",
@@ -397,8 +405,10 @@ class FOLDER
                             file.Path = file_path;
                             file.RelativePath = relative_file_path;
                             file.RelativeFolderPath = GetFolderPath( file.RelativePath );
-                            file.ModificationTime = folder_entry.timeLastModified;
                             file.ByteCount = folder_entry.size;
+                            file.AttributeMask = folder_entry.attributes;
+                            file.ModificationTime = folder_entry.timeLastModified;
+                            file.AccessTime = folder_entry.timeLastAccessed;
 
                             FileArray ~= file;
                             FileMap[ file.RelativePath ] = file;
@@ -450,6 +460,7 @@ bool
     EmptiedOptionIsEnabled,
     MovedOptionIsEnabled,
     PreviewOptionIsEnabled,
+    StoreOptionIsEnabled,
     RemovedOptionIsEnabled,
     UpdatedOptionIsEnabled,
     VerboseOptionIsEnabled;
@@ -461,6 +472,8 @@ long
     MediumSampleByteCount,
     MaximumSampleByteCount;
 string
+    ChangeListFileText,
+    ChangeFolderPath,
     SourceFolderPath,
     TargetFolderPath;
 string[]
@@ -522,6 +535,59 @@ void Abort(
     {
         exit( -1 );
     }
+}
+
+// ~~
+
+SysTime GetCurrentTime(
+    )
+{
+    return Clock.currTime();
+}
+
+// ~~
+
+ulong GetTime(
+    SysTime system_time
+    )
+{
+    return system_time.stdTime();
+}
+
+// ~~
+
+SysTime GetTime(
+    ulong time
+    )
+{
+    return SysTime( time, UTC() );
+}
+
+// ~~
+
+string GetTimeStamp(
+    ulong time
+    )
+{
+    string
+        time_stamp;
+
+    time_stamp = ( time.GetTime().toISOString().replace( "T", "" ).replace( "Z", "" ).replace( ".", "" ) ~ "0000000" )[ 0 .. 21 ];
+
+    return
+        time_stamp[ 0 .. 8 ]
+        ~ "_"
+        ~ time_stamp[ 8 .. 14 ]
+        ~ "_"
+        ~ time_stamp[ 14 .. $ ];
+}
+
+// ~~
+
+string GetCurrentTimeStamp(
+    )
+{
+    return GetTimeStamp( GetCurrentTime().GetTime() );
 }
 
 // ~~
@@ -936,16 +1002,59 @@ void RemoveFile(
 
 // ~~
 
-void MoveFile(
+void StoreFile(
     string source_file_path,
-    string target_file_path,
-    string reference_file_path
+    string target_file_path
     )
 {
     string
         target_folder_path;
     uint
-        attributes;
+        attribute_mask;
+    SysTime
+        access_time,
+        modification_time;
+
+    if ( !PreviewOptionIsEnabled )
+    {
+        try
+        {
+            target_folder_path = GetFolderPath( target_file_path );
+
+            if ( !target_folder_path.exists() )
+            {
+                writeln( "Adding folder : ", target_folder_path[ ChangeFolderPath.length .. $ ] );
+
+                target_folder_path.AddFolder();
+            }
+
+            attribute_mask = source_file_path.getAttributes();
+            source_file_path.getTimes( access_time, modification_time );
+
+            source_file_path.rename( target_file_path );
+
+            target_file_path.setAttributes( attribute_mask );
+            target_file_path.setTimes( access_time, modification_time );
+        }
+        catch ( Exception exception )
+        {
+            Abort( "Can't store file : " ~ source_file_path ~ " => " ~ target_file_path, exception );
+        }
+    }
+}
+
+// ~~
+
+void MoveFile(
+    string source_file_path,
+    string target_file_path,
+    string reference_file_path = ""
+    )
+{
+    string
+        target_folder_path;
+    uint
+        attribute_mask;
     SysTime
         access_time,
         modification_time;
@@ -963,12 +1072,17 @@ void MoveFile(
                 target_folder_path.AddFolder();
             }
 
-            attributes = reference_file_path.getAttributes();
+            if ( reference_file_path == "" )
+            {
+                reference_file_path = source_file_path;
+            }
+
+            attribute_mask = reference_file_path.getAttributes();
             reference_file_path.getTimes( access_time, modification_time );
 
             source_file_path.rename( target_file_path );
 
-            target_file_path.setAttributes( attributes );
+            target_file_path.setAttributes( attribute_mask );
             target_file_path.setTimes( access_time, modification_time );
         }
         catch ( Exception exception )
@@ -986,7 +1100,7 @@ void AdjustFile(
     )
 {
     uint
-        attributes;
+        attribute_mask;
     SysTime
         access_time,
         modification_time;
@@ -995,10 +1109,10 @@ void AdjustFile(
     {
         try
         {
-            attributes = source_file_path.getAttributes();
+            attribute_mask = source_file_path.getAttributes();
             source_file_path.getTimes( access_time, modification_time );
 
-            target_file_path.setAttributes( attributes );
+            target_file_path.setAttributes( attribute_mask );
             target_file_path.setTimes( access_time, modification_time );
         }
         catch ( Exception exception )
@@ -1018,7 +1132,7 @@ void CopyFile(
     string
         target_folder_path;
     uint
-        attributes;
+        attribute_mask;
     SysTime
         access_time,
         modification_time;
@@ -1036,21 +1150,21 @@ void CopyFile(
                 target_folder_path.AddFolder();
             }
 
-            attributes = source_file_path.getAttributes();
+            attribute_mask = source_file_path.getAttributes();
             source_file_path.getTimes( access_time, modification_time );
 
             version ( Windows )
             {
                 if ( target_file_path.exists() )
                 {
-                    target_file_path.setAttributes( attributes & ~1 );
+                    target_file_path.setAttributes( attribute_mask & ~1 );
                 }
 
                 source_file_path.copy( target_file_path, PreserveAttributes.no );
 
-                target_file_path.setAttributes( attributes & ~1 );
+                target_file_path.setAttributes( attribute_mask & ~1 );
                 target_file_path.setTimes( access_time, modification_time );
-                target_file_path.setAttributes( attributes );
+                target_file_path.setAttributes( attribute_mask );
             }
             else
             {
@@ -1061,7 +1175,7 @@ void CopyFile(
 
                 source_file_path.copy( target_file_path, PreserveAttributes.no );
 
-                target_file_path.setAttributes( attributes );
+                target_file_path.setAttributes( attribute_mask );
                 target_file_path.setTimes( access_time, modification_time );
             }
         }
@@ -1069,6 +1183,90 @@ void CopyFile(
         {
             Abort( "Can't copy file : " ~ source_file_path ~ " => " ~ target_file_path, exception );
         }
+    }
+}
+
+// ~~
+
+ubyte[] ReadByteArray(
+    string file_path
+    )
+{
+    ubyte[]
+        file_byte_array;
+
+    writeln( "Reading file : ", file_path );
+
+    try
+    {
+        file_byte_array = cast( ubyte[] )file_path.read();
+    }
+    catch ( Exception exception )
+    {
+        Abort( "Can't read file : " ~ file_path, exception );
+    }
+
+    return file_byte_array;
+}
+
+// ~~
+
+void WriteByteArray(
+    string file_path,
+    ubyte[] file_byte_array
+    )
+{
+    writeln( "Writing file : ", file_path );
+
+    try
+    {
+        file_path.write( file_byte_array );
+    }
+    catch ( Exception exception )
+    {
+        Abort( "Can't write file : " ~ file_path, exception );
+    }
+}
+
+// ~~
+
+string ReadText(
+    string file_path
+    )
+{
+    string
+        file_text;
+
+    writeln( "Reading file : ", file_path );
+
+    try
+    {
+        file_text = file_path.readText();
+    }
+    catch ( Exception exception )
+    {
+        Abort( "Can't read file : " ~ file_path, exception );
+    }
+
+    return file_text;
+}
+
+// ~~
+
+void WriteText(
+    string file_path,
+    string file_text
+    )
+{
+    writeln( "Writing file : ", file_path );
+
+    try
+    {
+        file_path.write( file_text );
+    }
+    catch ( Exception exception )
+    {
+        Abort( "Can't write file : " ~ file_path, exception );
     }
 }
 
@@ -1095,6 +1293,8 @@ void FindChangedFiles(
 
             if ( source_file !is null )
             {
+                source_file.SourceFilePath = source_file.Path;
+                source_file.SourceRelativeFilePath = source_file.RelativePath;
                 source_file.TargetFilePath = target_file.Path;
                 source_file.TargetRelativeFilePath = target_file.RelativePath;
 
@@ -1206,6 +1406,7 @@ void FindMovedFiles(
                              && files_have_same_content )
                         {
                             target_file.SourceFilePath = source_file.Path;
+                            target_file.SourceRelativeFilePath = source_file.RelativePath;
                             target_file.TargetFilePath = TargetFolder.Path ~ source_file.RelativePath;
                             target_file.TargetRelativeFilePath = source_file.RelativePath;
 
@@ -1238,6 +1439,10 @@ void FindRemovedFiles(
             TargetFolder.SubFolderMap[ target_file.RelativeFolderPath ].IsEmptied = true;
 
             target_file.Type = FILE_TYPE.Removed;
+            target_file.SourceFilePath = "";
+            target_file.SourceRelativeFilePath = "";
+            target_file.TargetFilePath = TargetFolder.Path ~ target_file.RelativePath;
+            target_file.TargetRelativeFilePath = target_file.RelativePath;
 
             RemovedFileArray ~= target_file;
         }
@@ -1258,6 +1463,8 @@ void FindAddedFiles(
     {
         if ( source_file.Type == FILE_TYPE.None )
         {
+            source_file.SourceFilePath = source_file.Path;
+            source_file.SourceRelativeFilePath = source_file.RelativePath;
             source_file.TargetFilePath = TargetFolder.Path ~ source_file.RelativePath;
             source_file.TargetRelativeFilePath = source_file.RelativePath;
 
@@ -1445,11 +1652,303 @@ bool AskConfirmation(
 
 // ~~
 
+void StoreChange(
+    string command,
+    string source_file_path,
+    string source_relative_file_path,
+    string target_file_path,
+    string target_relative_file_path
+    )
+{
+    uint
+        source_attribute_mask,
+        target_attribute_mask;
+    ulong
+        source_byte_count,
+        target_byte_count;
+    SysTime
+        source_access_time,
+        source_modification_time,
+        target_access_time,
+        target_modification_time;
+
+    if ( source_file_path != "" )
+    {
+        source_attribute_mask = source_file_path.getAttributes();
+        source_file_path.getTimes( source_access_time, source_modification_time );
+
+        if ( !source_file_path.endsWith( '/' ) )
+        {
+            source_byte_count = source_file_path.getSize();
+        }
+    }
+
+    if ( target_file_path != "" )
+    {
+        target_attribute_mask = target_file_path.getAttributes();
+        target_file_path.getTimes( target_access_time, target_modification_time );
+
+        if ( !target_file_path.endsWith( '/' ) )
+        {
+            target_byte_count = target_file_path.getSize();
+        }
+    }
+
+    ChangeListFileText ~= command;
+
+    if ( source_file_path != "" )
+    {
+        ChangeListFileText
+            ~= "\t"
+               ~ source_relative_file_path
+               ~ "\t"
+               ~ source_byte_count.to!string()
+               ~ "\t"
+               ~ source_attribute_mask.to!string()
+               ~ "\t"
+               ~ source_modification_time.GetTime().to!string()
+               ~ "\t"
+               ~ source_access_time.GetTime().to!string();
+    }
+
+    if ( target_file_path != "" )
+    {
+        ChangeListFileText
+            ~= "\t"
+               ~ target_relative_file_path
+               ~ "\t"
+               ~ target_byte_count.to!string()
+               ~ "\t"
+               ~ target_attribute_mask.to!string()
+               ~ "\t"
+               ~ target_modification_time.GetTime().to!string()
+               ~ "\t"
+               ~ target_access_time.GetTime().to!string();
+    }
+
+    ChangeListFileText ~= "\n";
+}
+
+// ~~
+
+void StoreMovedFile(
+    FILE moved_file
+    )
+{
+    StoreChange(
+        "&",
+        moved_file.SourceFilePath,
+        moved_file.SourceRelativeFilePath,
+        moved_file.TargetFilePath,
+        moved_file.TargetRelativeFilePath
+        );
+}
+
+// ~~
+
+void StoreRemovedFile(
+    FILE removed_file
+    )
+{
+    StoreChange(
+        "-",
+        "",
+        "",
+        removed_file.TargetFilePath,
+        removed_file.TargetRelativeFilePath
+        );
+
+    writeln( "Storing file : ", removed_file.TargetRelativeFilePath );
+
+    removed_file.TargetFilePath.StoreFile(
+        ChangeFolderPath ~ "REMOVED/" ~ removed_file.TargetRelativeFilePath
+        );
+}
+
+// ~~
+
+void StoreAdjustedFile(
+    FILE adjusted_file
+    )
+{
+    StoreChange(
+        "~",
+        adjusted_file.SourceFilePath,
+        adjusted_file.SourceRelativeFilePath,
+        adjusted_file.TargetFilePath,
+        adjusted_file.TargetRelativeFilePath
+        );
+}
+
+// ~~
+
+void StoreUpdatedFile(
+    FILE updated_file
+    )
+{
+    StoreChange(
+        "%",
+        updated_file.SourceFilePath,
+        updated_file.SourceRelativeFilePath,
+        updated_file.TargetFilePath,
+        updated_file.TargetRelativeFilePath
+        );
+
+    writeln( "Storing file : ", updated_file.TargetRelativeFilePath );
+
+    updated_file.TargetFilePath.StoreFile(
+        ChangeFolderPath ~ "UPDATED/" ~ updated_file.TargetRelativeFilePath
+        );
+}
+
+// ~~
+
+void StoreChangedFile(
+    FILE changed_file
+    )
+{
+    StoreChange(
+        "#",
+        changed_file.SourceFilePath,
+        changed_file.SourceRelativeFilePath,
+        changed_file.TargetFilePath,
+        changed_file.TargetRelativeFilePath
+        );
+
+    writeln( "Storing file : ", changed_file.TargetRelativeFilePath );
+
+    changed_file.TargetFilePath.StoreFile(
+        ChangeFolderPath ~ "CHANGED/" ~ changed_file.TargetRelativeFilePath
+        );
+}
+
+// ~~
+
+void StoreAddedFile(
+    FILE added_file
+    )
+{
+    StoreChange(
+        "+",
+        added_file.SourceFilePath,
+        added_file.SourceRelativeFilePath,
+        "",
+        ""
+        );
+}
+
+// ~~
+
+void StoreRemovedFolder(
+    string removed_folder_path,
+    string removed_relative_folder_path
+    )
+{
+    StoreChange(
+        "\\",
+        "",
+        "",
+        removed_folder_path,
+        removed_relative_folder_path
+        );
+}
+
+// ~~
+
+void StoreAddedFolder(
+    string added_folder_path,
+    string added_relative_folder_path
+    )
+{
+    StoreChange(
+        "/",
+        added_folder_path,
+        added_relative_folder_path,
+        "",
+        ""
+        );
+}
+
+// ~~
+
+void StoreChangeListFile(
+    )
+{
+    WriteText( ChangeFolderPath ~ "change_list.txt", ChangeListFileText );
+}
+
+// ~~
+
+void StoreFileListFile(
+    )
+{
+    string
+        file_list_file_text;
+
+    foreach ( file; SourceFolder.FileArray )
+    {
+        file_list_file_text
+            ~= file.RelativePath
+               ~ "\t"
+               ~ file.ByteCount.to!string()
+               ~ "\t"
+               ~ file.AttributeMask.to!string()
+               ~ "\t"
+               ~ file.ModificationTime.GetTime().to!string()
+               ~ "\t"
+               ~ file.AccessTime.GetTime().to!string()
+               ~ "\n";
+    }
+
+    WriteText( ChangeFolderPath ~ "file_list.txt", file_list_file_text );
+}
+
+// ~~
+
+void StoreFolderListFile(
+    )
+{
+    uint
+        attribute_mask;
+    string
+        folder_list_file_text;
+    SysTime
+        access_time,
+        modification_time;
+
+    foreach ( sub_folder; SourceFolder.SubFolderArray )
+    {
+        attribute_mask = sub_folder.Path.getAttributes();
+        sub_folder.Path.getTimes( access_time, modification_time );
+
+        folder_list_file_text
+            ~= sub_folder.RelativePath
+               ~ "\t"
+               ~ attribute_mask.to!string()
+               ~ "\t"
+               ~ modification_time.GetTime().to!string()
+               ~ "\t"
+               ~ access_time.GetTime().to!string()
+               ~ "\t"
+               ~ ( sub_folder.IsEmpty ? "1" : "0" )
+               ~ "\n";
+    }
+
+    WriteText( ChangeFolderPath ~ "folder_list.txt", folder_list_file_text );
+}
+
+// ~~
+
 void MoveFiles(
     )
 {
     foreach ( moved_file; MovedFileArray )
     {
+        if ( StoreOptionIsEnabled )
+        {
+            StoreMovedFile( moved_file );
+        }
+
         writeln( "Moving file : ", moved_file.RelativePath, " => ", moved_file.TargetRelativeFilePath );
 
         moved_file.Move();
@@ -1463,9 +1962,17 @@ void RemoveFiles(
 {
     foreach ( removed_file; RemovedFileArray )
     {
+        if ( StoreOptionIsEnabled )
+        {
+            StoreRemovedFile( removed_file );
+        }
+
         writeln( "Removing file : ", removed_file.RelativePath );
 
-        removed_file.Remove();
+        if ( !StoreOptionIsEnabled )
+        {
+            removed_file.Remove();
+        }
     }
 }
 
@@ -1476,6 +1983,11 @@ void AdjustFiles(
 {
     foreach ( adjusted_file; AdjustedFileArray )
     {
+        if ( StoreOptionIsEnabled )
+        {
+            StoreAdjustedFile( adjusted_file );
+        }
+
         writeln( "Adjusting file : ", adjusted_file.RelativePath );
 
         adjusted_file.Adjust();
@@ -1489,6 +2001,11 @@ void UpdateFiles(
 {
     foreach ( updated_file; UpdatedFileArray )
     {
+        if ( StoreOptionIsEnabled )
+        {
+            StoreUpdatedFile( updated_file );
+        }
+
         writeln( "Updating file : ", updated_file.RelativePath );
 
         updated_file.Copy();
@@ -1502,6 +2019,11 @@ void ChangeFiles(
 {
     foreach ( changed_file; ChangedFileArray )
     {
+        if ( StoreOptionIsEnabled )
+        {
+            StoreChangedFile( changed_file );
+        }
+
         writeln( "Changing file : ", changed_file.RelativePath );
 
         changed_file.Copy();
@@ -1515,6 +2037,11 @@ void AddFiles(
 {
     foreach ( added_file; AddedFileArray )
     {
+        if ( StoreOptionIsEnabled )
+        {
+            StoreAddedFile( added_file );
+        }
+
         writeln( "Adding file : ", added_file.RelativePath );
 
         added_file.Copy();
@@ -1550,6 +2077,11 @@ void RemoveFolders(
                     if ( target_folder_path.exists()
                          && target_folder_path.IsEmptyFolder() )
                     {
+                        if ( StoreOptionIsEnabled )
+                        {
+                            StoreRemovedFolder( target_folder_path, relative_folder_path );
+                        }
+
                         writeln( "Removing folder : ", relative_folder_path );
 
                         target_folder_path.RemoveFolder();
@@ -1600,6 +2132,11 @@ void AddFolders(
 
                 if ( !target_folder_path.exists() )
                 {
+                    if ( StoreOptionIsEnabled )
+                    {
+                        StoreAddedFolder( target_folder_path, relative_folder_path );
+                    }
+
                     writeln( "Adding folder : ", relative_folder_path );
 
                     target_folder_path.AddFolder();
@@ -1648,6 +2185,15 @@ void FixTargetFolder(
     {
         RemoveFolders();
         AddFolders();
+    }
+
+    if ( StoreOptionIsEnabled )
+    {
+        AddFolder( ChangeFolderPath );
+
+        StoreChangeListFile();
+        StoreFileListFile();
+        StoreFolderListFile();
     }
 }
 
@@ -1752,6 +2298,8 @@ void main(
     RemovedOptionIsEnabled = false;
     AddedOptionIsEnabled = false;
     EmptiedOptionIsEnabled = false;
+    StoreOptionIsEnabled = false;
+    ChangeFolderPath = "";
     FolderFilterArray = null;
     FolderFilterIsInclusiveArray = null;
     FileFilterArray = null;
@@ -1813,6 +2361,16 @@ void main(
         else if ( option == "--emptied" )
         {
             EmptiedOptionIsEnabled = true;
+        }
+        else if ( option == "--store"
+                  && argument_array.length >= 1
+                  && argument_array[ 0 ].IsFolderPath() )
+        {
+            StoreOptionIsEnabled = true;
+            ChangeFolderPath = argument_array[ 0 ].GetLogicalPath() ~ GetCurrentTimeStamp() ~ "/";
+            ChangeListFileText = "";
+
+            argument_array = argument_array[ 1 .. $ ];
         }
         else if ( option == "--exclude"
                   && argument_array.length >= 1
@@ -1913,6 +2471,7 @@ void main(
         writeln( "    --removed" );
         writeln( "    --added" );
         writeln( "    --emptied" );
+        writeln( "    --store CHANGE_FOLDER/" );
         writeln( "    --exclude FOLDER_FILTER/" );
         writeln( "    --include FOLDER/" );
         writeln( "    --ignore file_filter" );
@@ -1925,6 +2484,7 @@ void main(
         writeln( "    --preview" );
         writeln( "Examples :" );
         writeln( "    resync --create --updated --changed --removed --added --emptied --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --create --updated --changed --removed --added --emptied --store CHANGE_FOLDER/ SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --updated --changed --removed --added --moved --emptied --verbose --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --updated --changed --removed --added --moved --emptied --sample 128k 1m 1m --verbose --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --updated --changed --removed --added --emptied --exclude \".git/\" --ignore \"*.tmp\" --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
