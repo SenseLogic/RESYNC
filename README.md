@@ -41,7 +41,7 @@ resync [options] SOURCE_FOLDER/ TARGET_FOLDER/
 --removed : find the removed files
 --added : find the added files
 --emptied : find the emptied folders
---store CHANGE_FOLDER/ : store changes and removed or overwritten files
+--store CHANGE_FOLDER/ : store removed and overwritten files
 --exclude FOLDER_FILTER/ : exclude matching folders
 --include FOLDER/ : include this folder
 --ignore file_filter : ignore matching files
@@ -67,7 +67,7 @@ Creates the target folder if it doesn't exist, finds the updated/changed/removed
 resync --create --updated --changed --removed --added --emptied --store CHANGE_FOLDER/ SOURCE_FOLDER/ TARGET_FOLDER/
 ```
 
-Creates the target folder if it doesn't exist, finds the updated/changed/removed/added files and the emptied folders, record those changes, store removed or overwritten files in the change folder, and apply those changes to the target folder.
+Creates the target folder if it doesn't exist, finds the updated/changed/removed/added files and the emptied folders, store removed and overwritten files in the change folder, and apply those changes to the target folder.
 
 ```bash
 resync --updated --changed --removed --added --moved --emptied --verbose --confirm SOURCE_FOLDER/ TARGET_FOLDER/
