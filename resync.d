@@ -406,13 +406,13 @@ class FOLDER
                 ~= "/"
                    ~ sub_folder.RelativePath
                    ~ "\t"
+                   ~ ( sub_folder.IsEmpty ? "0" : "1" )
+                   ~ "\t"
                    ~ sub_folder.AttributeMask.to!string( 16 )
                    ~ "\t"
                    ~ sub_folder.ModificationTime.GetTime().to!string( 16 )
                    ~ "\t"
                    ~ sub_folder.AccessTime.GetTime().to!string( 16 )
-                   ~ "\t"
-                   ~ ( sub_folder.IsEmpty ? "1" : "0" )
                    ~ "\n";
         }
 
@@ -1465,7 +1465,7 @@ void FindMovedFiles(
                         }
                         else
                         {
-                            files_have_same_name = true;
+                            files_have_same_name = ( source_file.ByteCount > 0 );
                         }
 
                         if ( pass_index == 0
@@ -1758,32 +1758,21 @@ void StoreChange(
         target_access_time,
         target_modification_time;
 
-    if ( source_file_path != "" )
-    {
-        source_attribute_mask = source_file_path.getAttributes();
-        source_file_path.getTimes( source_access_time, source_modification_time );
-
-        if ( !source_file_path.endsWith( '/' ) )
-        {
-            source_byte_count = source_file_path.getSize();
-        }
-    }
-
-    if ( target_file_path != "" )
-    {
-        target_attribute_mask = target_file_path.getAttributes();
-        target_file_path.getTimes( target_access_time, target_modification_time );
-
-        if ( !target_file_path.endsWith( '/' ) )
-        {
-            target_byte_count = target_file_path.getSize();
-        }
-    }
-
     ChangeListFileText ~= command;
 
     if ( source_file_path != "" )
     {
+        if ( source_file_path.exists() )
+        {
+            source_attribute_mask = source_file_path.getAttributes();
+            source_file_path.getTimes( source_access_time, source_modification_time );
+
+            if ( !source_file_path.endsWith( '/' ) )
+            {
+                source_byte_count = source_file_path.getSize();
+            }
+        }
+
         ChangeListFileText
             ~= "\t"
                ~ source_relative_file_path
@@ -1799,6 +1788,17 @@ void StoreChange(
 
     if ( target_file_path != "" )
     {
+        if ( target_file_path.exists() )
+        {
+            target_attribute_mask = target_file_path.getAttributes();
+            target_file_path.getTimes( target_access_time, target_modification_time );
+
+            if ( !target_file_path.endsWith( '/' ) )
+            {
+                target_byte_count = target_file_path.getSize();
+            }
+        }
+
         ChangeListFileText
             ~= "\t"
                ~ target_relative_file_path
