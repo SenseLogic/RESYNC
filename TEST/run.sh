@@ -1,11 +1,11 @@
 #!/bin/sh
 set -x
 mkdir -p EMPTY_FOLDER
-../resync --create --updated --changed --removed --added --emptied EMPTY_FOLDER/ CHANGE_FOLDER/
-../resync --create --updated --changed --removed --added --emptied EMPTY_FOLDER/ BACKUP_FOLDER/
-../resync --create --updated --changed --removed --added --emptied --store CHANGE_FOLDER/ TARGET_FOLDER/ BACKUP_FOLDER/
-../resync --create --updated --changed --removed --added --emptied --store CHANGE_FOLDER/ SOURCE_FOLDER/ BACKUP_FOLDER/
-../resync --create --updated --changed --removed --added --emptied --preview SOURCE_FOLDER/ BACKUP_FOLDER/
+../resync --create --different EMPTY_FOLDER/ CHANGE_FOLDER/
+../resync --create --different EMPTY_FOLDER/ BACKUP_FOLDER/
+../resync --create --different --store CHANGE_FOLDER/ TARGET_FOLDER/ BACKUP_FOLDER/
+../resync --create --different --store CHANGE_FOLDER/ SOURCE_FOLDER/ BACKUP_FOLDER/
+../resync --create --different --preview SOURCE_FOLDER/ BACKUP_FOLDER/
 read key
 ../resync --create --updated --changed --removed --added --emptied --confirm --preview SOURCE_FOLDER/ TARGET_FOLDER/
 ../resync --updated --changed --removed --added --moved --emptied --verbose --confirm --preview SOURCE_FOLDER/ TARGET_FOLDER/

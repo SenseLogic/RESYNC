@@ -285,6 +285,11 @@ class SUB_FOLDER
     string
         Path,
         RelativePath;
+    uint
+        AttributeMask;
+    SysTime
+        ModificationTime,
+        AccessTime;
     bool
         IsEmpty,
         IsEmptied;
@@ -346,6 +351,76 @@ class FOLDER
         }
     }
 
+    // ~~
+
+    void StoreFileListFile(
+        string file_list_file_path
+        )
+    {
+        string
+            file_list_file_text,
+            file_name,
+            folder_path,
+            prior_folder_path;
+
+        foreach ( file; FileArray )
+        {
+            folder_path = "/" ~ file.RelativePath.GetFolderPath();
+            file_name = file.RelativePath.GetFileName();
+
+            if ( folder_path != prior_folder_path )
+            {
+                file_list_file_text ~= folder_path ~ "\n";
+                prior_folder_path = folder_path;
+            }
+
+            file_list_file_text
+                ~= "\t"
+                   ~ file_name
+                   ~ "\t"
+                   ~ file.ByteCount.to!string()
+                   ~ "\t"
+                   ~ file.AttributeMask.to!string( 16 )
+                   ~ "\t"
+                   ~ file.ModificationTime.GetTime().to!string( 16 )
+                   ~ "\t"
+                   ~ file.AccessTime.GetTime().to!string( 16 )
+                   ~ "\n";
+        }
+
+        WriteText( file_list_file_path, file_list_file_text );
+    }
+
+    // ~~
+
+    void StoreFolderListFile(
+        string folder_list_file_path
+        )
+    {
+        string
+            folder_list_file_text;
+
+        foreach ( sub_folder; SourceFolder.SubFolderArray )
+        {
+            folder_list_file_text
+                ~= "/"
+                   ~ sub_folder.RelativePath
+                   ~ "\t"
+                   ~ sub_folder.AttributeMask.to!string( 16 )
+                   ~ "\t"
+                   ~ sub_folder.ModificationTime.GetTime().to!string( 16 )
+                   ~ "\t"
+                   ~ sub_folder.AccessTime.GetTime().to!string( 16 )
+                   ~ "\t"
+                   ~ ( sub_folder.IsEmpty ? "1" : "0" )
+                   ~ "\n";
+        }
+
+        WriteText( folder_list_file_path, folder_list_file_text );
+    }
+
+
+
     // -- OPERATIONS
 
     void Add(
@@ -367,6 +442,11 @@ class FOLDER
             file_path,
             relative_file_path,
             relative_folder_path;
+        uint
+            attribute_mask;
+        SysTime
+            access_time,
+            modification_time;
         FILE
             file;
         SUB_FOLDER
@@ -376,9 +456,15 @@ class FOLDER
 
         if ( IsIncludedFolder( "/" ~ relative_folder_path ) )
         {
+            attribute_mask = folder_path.getAttributes();
+            folder_path.getTimes( access_time, modification_time );
+
             sub_folder = new SUB_FOLDER();
             sub_folder.Path = folder_path;
             sub_folder.RelativePath = relative_folder_path;
+            sub_folder.AttributeMask = attribute_mask;
+            sub_folder.ModificationTime = modification_time;
+            sub_folder.AccessTime = access_time;
             sub_folder.IsEmpty = true;
 
             SubFolderArray ~= sub_folder;
@@ -1704,11 +1790,11 @@ void StoreChange(
                ~ "\t"
                ~ source_byte_count.to!string()
                ~ "\t"
-               ~ source_attribute_mask.to!string()
+               ~ source_attribute_mask.to!string( 16 )
                ~ "\t"
-               ~ source_modification_time.GetTime().to!string()
+               ~ source_modification_time.GetTime().to!string( 16 )
                ~ "\t"
-               ~ source_access_time.GetTime().to!string();
+               ~ source_access_time.GetTime().to!string( 16 );
     }
 
     if ( target_file_path != "" )
@@ -1719,11 +1805,11 @@ void StoreChange(
                ~ "\t"
                ~ target_byte_count.to!string()
                ~ "\t"
-               ~ target_attribute_mask.to!string()
+               ~ target_attribute_mask.to!string( 16 )
                ~ "\t"
-               ~ target_modification_time.GetTime().to!string()
+               ~ target_modification_time.GetTime().to!string( 16 )
                ~ "\t"
-               ~ target_access_time.GetTime().to!string();
+               ~ target_access_time.GetTime().to!string( 16 );
     }
 
     ChangeListFileText ~= "\n";
@@ -1736,7 +1822,7 @@ void StoreMovedFile(
     )
 {
     StoreChange(
-        "&",
+        "^",
         moved_file.SourceFilePath,
         moved_file.SourceRelativeFilePath,
         moved_file.TargetFilePath,
@@ -1772,7 +1858,7 @@ void StoreAdjustedFile(
     )
 {
     StoreChange(
-        "~",
+        "#",
         adjusted_file.SourceFilePath,
         adjusted_file.SourceRelativeFilePath,
         adjusted_file.TargetFilePath,
@@ -1787,7 +1873,7 @@ void StoreUpdatedFile(
     )
 {
     StoreChange(
-        "%",
+        ">",
         updated_file.SourceFilePath,
         updated_file.SourceRelativeFilePath,
         updated_file.TargetFilePath,
@@ -1808,7 +1894,7 @@ void StoreChangedFile(
     )
 {
     StoreChange(
-        "#",
+        "<",
         changed_file.SourceFilePath,
         changed_file.SourceRelativeFilePath,
         changed_file.TargetFilePath,
@@ -1845,7 +1931,7 @@ void StoreRemovedFolder(
     )
 {
     StoreChange(
-        "\\",
+        "!",
         "",
         "",
         removed_folder_path,
@@ -1861,7 +1947,7 @@ void StoreAddedFolder(
     )
 {
     StoreChange(
-        "/",
+        ":",
         added_folder_path,
         added_relative_folder_path,
         "",
@@ -1875,66 +1961,6 @@ void StoreChangeListFile(
     )
 {
     WriteText( ChangeFolderPath ~ "change_list.txt", ChangeListFileText );
-}
-
-// ~~
-
-void StoreFileListFile(
-    )
-{
-    string
-        file_list_file_text;
-
-    foreach ( file; SourceFolder.FileArray )
-    {
-        file_list_file_text
-            ~= file.RelativePath
-               ~ "\t"
-               ~ file.ByteCount.to!string()
-               ~ "\t"
-               ~ file.AttributeMask.to!string()
-               ~ "\t"
-               ~ file.ModificationTime.GetTime().to!string()
-               ~ "\t"
-               ~ file.AccessTime.GetTime().to!string()
-               ~ "\n";
-    }
-
-    WriteText( ChangeFolderPath ~ "file_list.txt", file_list_file_text );
-}
-
-// ~~
-
-void StoreFolderListFile(
-    )
-{
-    uint
-        attribute_mask;
-    string
-        folder_list_file_text;
-    SysTime
-        access_time,
-        modification_time;
-
-    foreach ( sub_folder; SourceFolder.SubFolderArray )
-    {
-        attribute_mask = sub_folder.Path.getAttributes();
-        sub_folder.Path.getTimes( access_time, modification_time );
-
-        folder_list_file_text
-            ~= sub_folder.RelativePath
-               ~ "\t"
-               ~ attribute_mask.to!string()
-               ~ "\t"
-               ~ modification_time.GetTime().to!string()
-               ~ "\t"
-               ~ access_time.GetTime().to!string()
-               ~ "\t"
-               ~ ( sub_folder.IsEmpty ? "1" : "0" )
-               ~ "\n";
-    }
-
-    WriteText( ChangeFolderPath ~ "folder_list.txt", folder_list_file_text );
 }
 
 // ~~
@@ -2148,6 +2174,48 @@ void AddFolders(
 
 // ~~
 
+void AdjustFolders(
+    )
+{
+    string
+        relative_folder_path,
+        source_folder_path,
+        target_folder_path;
+    Duration
+        modification_time_offset_duration;
+    SUB_FOLDER *
+        target_sub_folder;
+
+    foreach ( source_sub_folder; SourceFolder.SubFolderArray )
+    {
+        relative_folder_path = source_sub_folder.RelativePath;
+
+        target_sub_folder = relative_folder_path in TargetFolder.SubFolderMap;
+
+        if ( target_sub_folder !is null )
+        {
+            modification_time_offset_duration = source_sub_folder.ModificationTime - target_sub_folder.ModificationTime;
+
+            if ( modification_time_offset_duration <= NegativeAdjustedOffsetDuration
+                 || modification_time_offset_duration >= PositiveAdjustedOffsetDuration )
+            {
+                source_folder_path = SourceFolder.Path ~ relative_folder_path;
+                target_folder_path = TargetFolder.Path ~ relative_folder_path;
+
+                if ( source_folder_path.exists()
+                     && target_folder_path.exists() )
+                {
+                    writeln( "Adjusting folder : ", relative_folder_path );
+
+                    source_folder_path.AdjustFile( target_folder_path );
+                }
+            }
+        }
+    }
+}
+
+// ~~
+
 void FixTargetFolder(
     )
 {
@@ -2192,8 +2260,12 @@ void FixTargetFolder(
         AddFolder( ChangeFolderPath );
 
         StoreChangeListFile();
-        StoreFileListFile();
-        StoreFolderListFile();
+
+        SourceFolder.StoreFileListFile( ChangeFolderPath ~ "source_file_list.txt" );
+        SourceFolder.StoreFolderListFile( ChangeFolderPath ~ "source_folder_list.txt");
+
+        TargetFolder.StoreFileListFile( ChangeFolderPath ~ "target_file_list.txt" );
+        TargetFolder.StoreFolderListFile( ChangeFolderPath ~ "target_folder_list.txt");
     }
 }
 
@@ -2362,6 +2434,14 @@ void main(
         {
             EmptiedOptionIsEnabled = true;
         }
+        else if ( option == "--different" )
+        {
+            UpdatedOptionIsEnabled = true;
+            ChangedOptionIsEnabled = true;
+            RemovedOptionIsEnabled = true;
+            AddedOptionIsEnabled = true;
+            EmptiedOptionIsEnabled = true;
+        }
         else if ( option == "--store"
                   && argument_array.length >= 1
                   && argument_array[ 0 ].IsFolderPath() )
@@ -2471,6 +2551,7 @@ void main(
         writeln( "    --removed" );
         writeln( "    --added" );
         writeln( "    --emptied" );
+        writeln( "    --different" );
         writeln( "    --store CHANGE_FOLDER/" );
         writeln( "    --exclude FOLDER_FILTER/" );
         writeln( "    --include FOLDER/" );
