@@ -43,7 +43,7 @@ resync [options] SOURCE_FOLDER/ TARGET_FOLDER/
 --added : find the added files
 --emptied : find the emptied folders
 --different : find the updated, changed, removed and added files, and the emptied folders
---backup CHANGE_FOLDER/ : backup updated, changed and removed files
+--backup CHANGE_FOLDER/ : backup replaced and removed files
 --exclude FOLDER_FILTER/ : exclude matching folders
 --include FOLDER/ : include this folder
 --ignore file_filter : ignore matching files
@@ -63,7 +63,7 @@ resync [options] SOURCE_FOLDER/ TARGET_FOLDER/
 resync --create --different --backup CHANGE_FOLDER/ SOURCE_FOLDER/ TARGET_FOLDER/
 ```
 
-Creates the target folder if it doesn't exist, finds the updated/changed/removed/added files and the emptied folders, backups updated, changed and removed files in the change folder, and applies those changes to the target folder.
+Creates the target folder if it doesn't exist, finds the updated/changed/removed/added files and the emptied folders, and applies those changes to the target folder, backuping replaced and removed files in the change folder.
 
 ```bash
 resync --create --updated --changed --removed --added --emptied --confirm SOURCE_FOLDER/ TARGET_FOLDER/
