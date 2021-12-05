@@ -353,7 +353,7 @@ class FOLDER
 
     // ~~
 
-    void BackupFileList(
+    void StoreFileList(
         string file_list_file_path
         )
     {
@@ -393,7 +393,7 @@ class FOLDER
 
     // ~~
 
-    void BackupFolderList(
+    void StoreFolderList(
         string folder_list_file_path
         )
     {
@@ -546,7 +546,7 @@ bool
     EmptiedOptionIsEnabled,
     MovedOptionIsEnabled,
     PreviewOptionIsEnabled,
-    BackupOptionIsEnabled,
+    StoreOptionIsEnabled,
     RemovedOptionIsEnabled,
     UpdatedOptionIsEnabled,
     VerboseOptionIsEnabled;
@@ -559,7 +559,7 @@ long
     MaximumSampleByteCount;
 string
     ChangeListFileText,
-    ChangeFolderPath,
+    StoreFolderPath,
     SourceFolderPath,
     TargetFolderPath;
 string[]
@@ -1088,7 +1088,7 @@ void RemoveFile(
 
 // ~~
 
-void BackupFile(
+void StoreFile(
     string source_file_path,
     string target_file_path
     )
@@ -1109,7 +1109,7 @@ void BackupFile(
 
             if ( !target_folder_path.exists() )
             {
-                writeln( "Adding folder : ", target_folder_path[ ChangeFolderPath.length .. $ ] );
+                writeln( "Adding folder : ", target_folder_path[ StoreFolderPath.length .. $ ] );
 
                 target_folder_path.AddFolder();
             }
@@ -1124,7 +1124,7 @@ void BackupFile(
         }
         catch ( Exception exception )
         {
-            Abort( "Can't backup file : " ~ source_file_path ~ " => " ~ target_file_path, exception );
+            Abort( "Can't store file : " ~ source_file_path ~ " => " ~ target_file_path, exception );
         }
     }
 }
@@ -1738,7 +1738,7 @@ bool AskConfirmation(
 
 // ~~
 
-void BackupChange(
+void StoreChange(
     string command,
     string source_file_path,
     string source_relative_file_path,
@@ -1817,11 +1817,11 @@ void BackupChange(
 
 // ~~
 
-void BackupMovedFile(
+void StoreMovedFile(
     FILE moved_file
     )
 {
-    BackupChange(
+    StoreChange(
         "^",
         moved_file.SourceFilePath,
         moved_file.SourceRelativeFilePath,
@@ -1832,11 +1832,11 @@ void BackupMovedFile(
 
 // ~~
 
-void BackupRemovedFile(
+void StoreRemovedFile(
     FILE removed_file
     )
 {
-    BackupChange(
+    StoreChange(
         "-",
         "",
         "",
@@ -1846,18 +1846,18 @@ void BackupRemovedFile(
 
     writeln( "Storing file : ", removed_file.TargetRelativeFilePath );
 
-    removed_file.TargetFilePath.BackupFile(
-        ChangeFolderPath ~ "REMOVED/" ~ removed_file.TargetRelativeFilePath
+    removed_file.TargetFilePath.StoreFile(
+        StoreFolderPath ~ "REMOVED/" ~ removed_file.TargetRelativeFilePath
         );
 }
 
 // ~~
 
-void BackupAdjustedFile(
+void StoreAdjustedFile(
     FILE adjusted_file
     )
 {
-    BackupChange(
+    StoreChange(
         "#",
         adjusted_file.SourceFilePath,
         adjusted_file.SourceRelativeFilePath,
@@ -1868,11 +1868,11 @@ void BackupAdjustedFile(
 
 // ~~
 
-void BackupUpdatedFile(
+void StoreUpdatedFile(
     FILE updated_file
     )
 {
-    BackupChange(
+    StoreChange(
         ">",
         updated_file.SourceFilePath,
         updated_file.SourceRelativeFilePath,
@@ -1882,18 +1882,18 @@ void BackupUpdatedFile(
 
     writeln( "Storing file : ", updated_file.TargetRelativeFilePath );
 
-    updated_file.TargetFilePath.BackupFile(
-        ChangeFolderPath ~ "UPDATED/" ~ updated_file.TargetRelativeFilePath
+    updated_file.TargetFilePath.StoreFile(
+        StoreFolderPath ~ "UPDATED/" ~ updated_file.TargetRelativeFilePath
         );
 }
 
 // ~~
 
-void BackupChangedFile(
+void StoreChangedFile(
     FILE changed_file
     )
 {
-    BackupChange(
+    StoreChange(
         "<",
         changed_file.SourceFilePath,
         changed_file.SourceRelativeFilePath,
@@ -1903,18 +1903,18 @@ void BackupChangedFile(
 
     writeln( "Storing file : ", changed_file.TargetRelativeFilePath );
 
-    changed_file.TargetFilePath.BackupFile(
-        ChangeFolderPath ~ "CHANGED/" ~ changed_file.TargetRelativeFilePath
+    changed_file.TargetFilePath.StoreFile(
+        StoreFolderPath ~ "CHANGED/" ~ changed_file.TargetRelativeFilePath
         );
 }
 
 // ~~
 
-void BackupAddedFile(
+void StoreAddedFile(
     FILE added_file
     )
 {
-    BackupChange(
+    StoreChange(
         "+",
         added_file.SourceFilePath,
         added_file.SourceRelativeFilePath,
@@ -1925,12 +1925,12 @@ void BackupAddedFile(
 
 // ~~
 
-void BackupRemovedFolder(
+void StoreRemovedFolder(
     string removed_folder_path,
     string removed_relative_folder_path
     )
 {
-    BackupChange(
+    StoreChange(
         "!",
         "",
         "",
@@ -1941,12 +1941,12 @@ void BackupRemovedFolder(
 
 // ~~
 
-void BackupAddedFolder(
+void StoreAddedFolder(
     string added_folder_path,
     string added_relative_folder_path
     )
 {
-    BackupChange(
+    StoreChange(
         ":",
         added_folder_path,
         added_relative_folder_path,
@@ -1957,10 +1957,10 @@ void BackupAddedFolder(
 
 // ~~
 
-void BackupChangeList(
+void StoreChangeList(
     )
 {
-    WriteText( ChangeFolderPath ~ "change_list.txt", ChangeListFileText );
+    WriteText( StoreFolderPath ~ "change_list.txt", ChangeListFileText );
 }
 
 // ~~
@@ -1970,9 +1970,9 @@ void MoveFiles(
 {
     foreach ( moved_file; MovedFileArray )
     {
-        if ( BackupOptionIsEnabled )
+        if ( StoreOptionIsEnabled )
         {
-            BackupMovedFile( moved_file );
+            StoreMovedFile( moved_file );
         }
 
         writeln( "Moving file : ", moved_file.RelativePath, " => ", moved_file.TargetRelativeFilePath );
@@ -1988,14 +1988,14 @@ void RemoveFiles(
 {
     foreach ( removed_file; RemovedFileArray )
     {
-        if ( BackupOptionIsEnabled )
+        if ( StoreOptionIsEnabled )
         {
-            BackupRemovedFile( removed_file );
+            StoreRemovedFile( removed_file );
         }
 
         writeln( "Removing file : ", removed_file.RelativePath );
 
-        if ( !BackupOptionIsEnabled )
+        if ( !StoreOptionIsEnabled )
         {
             removed_file.Remove();
         }
@@ -2009,9 +2009,9 @@ void AdjustFiles(
 {
     foreach ( adjusted_file; AdjustedFileArray )
     {
-        if ( BackupOptionIsEnabled )
+        if ( StoreOptionIsEnabled )
         {
-            BackupAdjustedFile( adjusted_file );
+            StoreAdjustedFile( adjusted_file );
         }
 
         writeln( "Adjusting file : ", adjusted_file.RelativePath );
@@ -2027,9 +2027,9 @@ void UpdateFiles(
 {
     foreach ( updated_file; UpdatedFileArray )
     {
-        if ( BackupOptionIsEnabled )
+        if ( StoreOptionIsEnabled )
         {
-            BackupUpdatedFile( updated_file );
+            StoreUpdatedFile( updated_file );
         }
 
         writeln( "Updating file : ", updated_file.RelativePath );
@@ -2045,9 +2045,9 @@ void ChangeFiles(
 {
     foreach ( changed_file; ChangedFileArray )
     {
-        if ( BackupOptionIsEnabled )
+        if ( StoreOptionIsEnabled )
         {
-            BackupChangedFile( changed_file );
+            StoreChangedFile( changed_file );
         }
 
         writeln( "Changing file : ", changed_file.RelativePath );
@@ -2063,9 +2063,9 @@ void AddFiles(
 {
     foreach ( added_file; AddedFileArray )
     {
-        if ( BackupOptionIsEnabled )
+        if ( StoreOptionIsEnabled )
         {
-            BackupAddedFile( added_file );
+            StoreAddedFile( added_file );
         }
 
         writeln( "Adding file : ", added_file.RelativePath );
@@ -2103,9 +2103,9 @@ void RemoveFolders(
                     if ( target_folder_path.exists()
                          && target_folder_path.IsEmptyFolder() )
                     {
-                        if ( BackupOptionIsEnabled )
+                        if ( StoreOptionIsEnabled )
                         {
-                            BackupRemovedFolder( target_folder_path, relative_folder_path );
+                            StoreRemovedFolder( target_folder_path, relative_folder_path );
                         }
 
                         writeln( "Removing folder : ", relative_folder_path );
@@ -2158,9 +2158,9 @@ void AddFolders(
 
                 if ( !target_folder_path.exists() )
                 {
-                    if ( BackupOptionIsEnabled )
+                    if ( StoreOptionIsEnabled )
                     {
-                        BackupAddedFolder( target_folder_path, relative_folder_path );
+                        StoreAddedFolder( target_folder_path, relative_folder_path );
                     }
 
                     writeln( "Adding folder : ", relative_folder_path );
@@ -2255,17 +2255,17 @@ void FixTargetFolder(
         AddFolders();
     }
 
-    if ( BackupOptionIsEnabled )
+    if ( StoreOptionIsEnabled )
     {
-        AddFolder( ChangeFolderPath );
+        AddFolder( StoreFolderPath );
 
-        BackupChangeList();
+        StoreChangeList();
 
-        SourceFolder.BackupFileList( ChangeFolderPath ~ "source_file_list.txt" );
-        SourceFolder.BackupFolderList( ChangeFolderPath ~ "source_folder_list.txt");
+        SourceFolder.StoreFileList( StoreFolderPath ~ "source_file_list.txt" );
+        SourceFolder.StoreFolderList( StoreFolderPath ~ "source_folder_list.txt");
 
-        TargetFolder.BackupFileList( ChangeFolderPath ~ "target_file_list.txt" );
-        TargetFolder.BackupFolderList( ChangeFolderPath ~ "target_folder_list.txt");
+        TargetFolder.StoreFileList( StoreFolderPath ~ "target_file_list.txt" );
+        TargetFolder.StoreFolderList( StoreFolderPath ~ "target_folder_list.txt");
     }
 }
 
@@ -2370,8 +2370,8 @@ void main(
     RemovedOptionIsEnabled = false;
     AddedOptionIsEnabled = false;
     EmptiedOptionIsEnabled = false;
-    BackupOptionIsEnabled = false;
-    ChangeFolderPath = "";
+    StoreOptionIsEnabled = false;
+    StoreFolderPath = "";
     FolderFilterArray = null;
     FolderFilterIsInclusiveArray = null;
     FileFilterArray = null;
@@ -2442,12 +2442,12 @@ void main(
             AddedOptionIsEnabled = true;
             EmptiedOptionIsEnabled = true;
         }
-        else if ( option == "--backup"
+        else if ( option == "--store"
                   && argument_array.length >= 1
                   && argument_array[ 0 ].IsFolderPath() )
         {
-            BackupOptionIsEnabled = true;
-            ChangeFolderPath = argument_array[ 0 ].GetLogicalPath() ~ GetCurrentTimeStamp() ~ "/";
+            StoreOptionIsEnabled = true;
+            StoreFolderPath = argument_array[ 0 ].GetLogicalPath() ~ GetCurrentTimeStamp() ~ "/";
             ChangeListFileText = "";
 
             argument_array = argument_array[ 1 .. $ ];
@@ -2552,7 +2552,7 @@ void main(
         writeln( "    --added" );
         writeln( "    --emptied" );
         writeln( "    --different" );
-        writeln( "    --backup CHANGE_FOLDER/" );
+        writeln( "    --store STORE_FOLDER/" );
         writeln( "    --exclude FOLDER_FILTER/" );
         writeln( "    --include FOLDER/" );
         writeln( "    --ignore file_filter" );
@@ -2565,7 +2565,7 @@ void main(
         writeln( "    --preview" );
         writeln( "Examples :" );
         writeln( "    resync --create --updated --changed --removed --added --emptied --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
-        writeln( "    resync --create --updated --changed --removed --added --emptied --backup CHANGE_FOLDER/ SOURCE_FOLDER/ TARGET_FOLDER/" );
+        writeln( "    resync --create --updated --changed --removed --added --emptied --store STORE_FOLDER/ SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --updated --changed --removed --added --moved --emptied --verbose --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --updated --changed --removed --added --moved --emptied --sample 128k 1m 1m --verbose --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );
         writeln( "    resync --updated --changed --removed --added --emptied --exclude \".git/\" --ignore \"*.tmp\" --confirm SOURCE_FOLDER/ TARGET_FOLDER/" );

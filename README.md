@@ -9,7 +9,7 @@ Non-destructive local folder synchronizer.
 * Efficiently synchronizes big file trees between local disks without computing checksums.
 * Processes the updated, changed, moved, removed and added files independently.
 * Allows to include/exclude files by folder, name or path using wildcards.
-* Backups replaced and removed files.
+* Stores replaced and removed files.
 
 ## Limitations
 
@@ -43,7 +43,7 @@ resync [options] SOURCE_FOLDER/ TARGET_FOLDER/
 --added : find the added files
 --emptied : find the emptied folders
 --different : find the updated, changed, removed and added files, and the emptied folders
---backup CHANGE_FOLDER/ : backup replaced and removed files
+--store STORE_FOLDER/ : store replaced and removed files
 --exclude FOLDER_FILTER/ : exclude matching folders
 --include FOLDER/ : include this folder
 --ignore file_filter : ignore matching files
@@ -60,10 +60,10 @@ resync [options] SOURCE_FOLDER/ TARGET_FOLDER/
 ### Examples
 
 ```bash
-resync --create --different --backup CHANGE_FOLDER/ SOURCE_FOLDER/ TARGET_FOLDER/
+resync --create --different --store STORE_FOLDER/ SOURCE_FOLDER/ TARGET_FOLDER/
 ```
 
-Creates the target folder if it doesn't exist, finds the updated/changed/removed/added files and the emptied folders, and applies those changes to the target folder, backuping replaced and removed files in the change folder.
+Creates the target folder if it doesn't exist, finds the updated/changed/removed/added files and the emptied folders, and applies those changes to the target folder, storeing replaced and removed files in the change folder.
 
 ```bash
 resync --create --updated --changed --removed --added --emptied --confirm SOURCE_FOLDER/ TARGET_FOLDER/
