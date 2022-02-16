@@ -22,7 +22,7 @@ Install the [DMD 2 compiler](https://dlang.org/download.html) (using the MinGW s
 Build the executable with the following command line :
 
 ```bash
-dmd -m64 resync.d
+dmd -O -inline -m64 resync.d
 ```
 
 ## Command line
